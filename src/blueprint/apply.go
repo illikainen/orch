@@ -1,0 +1,217 @@
+package blueprint
+
+import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/illikainen/orch/src/hosts/qvm"
+	"github.com/illikainen/orch/src/tasks"
+
+	"github.com/illikainen/go-netutils/src/sshx"
+	"github.com/illikainen/go-utils/src/process"
+	"github.com/illikainen/go-utils/src/sandbox"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
+)
+
+func Apply(opts *Options) error {
+	output := tasks.Outputs{}
+
+	// Apply local changes first in case localhost needs to be hardened before
+	// communicating with remotes.
+	if !sandbox.IsSandboxed() {
+		var err error
+		output, err = applyLocal(opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Re-execute ourselves in a sandbox on compatible systems before applying
+	// on the remotes.
+	if sandbox.Compatible() && !sandbox.IsSandboxed() {
+		if err := startSandbox(output, opts); err != nil {
+			return err
+		}
+
+		// Execution continues below in the sandboxed subprocess.
+		os.Exit(0) // revive:disable-line:deep-exit
+	}
+
+	return applyRemote(output, opts)
+}
+
+func applyLocal(opts *Options) (tasks.Outputs, error) {
+	blueprint := NewBlueprint(opts)
+	if err := blueprint.PartialDecode(); err != nil {
+		return nil, err
+	}
+
+	output := tasks.Outputs{}
+	for _, host := range blueprint.Hosts {
+		if host.Type == "local" {
+			out, err := blueprint.Apply(host.Name, output)
+			if err != nil {
+				return nil, err
+			}
+			output = append(output, out...)
+		}
+	}
+
+	return output, nil
+}
+
+type worker struct {
+	name   string
+	output tasks.Outputs
+	err    error
+}
+
+func applyRemote(output tasks.Outputs, opts *Options) error {
+	// The output from non-sandboxed local applies is sent as JSON on stdin
+	// to sandboxed subprocesses.
+	if sandbox.IsSandboxed() {
+		data := bytes.Buffer{}
+		_, err := io.Copy(&data, os.Stdin)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(data.Bytes(), &output)
+		if err != nil {
+			return err
+		}
+	}
+
+	blueprint := NewBlueprint(opts)
+	if err := blueprint.PartialDecode(); err != nil {
+		return err
+	}
+
+	channels := make([]chan worker, len(blueprint.Hosts))
+	for i := range blueprint.Hosts {
+		channels[i] = make(chan worker, len(blueprint.Hosts))
+	}
+
+	deps := blueprint.Dependencies.Filter(output.Hosts())
+	if circular, host := deps.FindCircularDependencies(); circular {
+		return errors.Errorf("circular dependency in %s", host)
+	}
+
+	group := errgroup.Group{}
+	for i, host := range blueprint.Hosts {
+		if host.Type == "local" {
+			continue
+		}
+
+		idx := i
+		name := host.Name
+		out, err := output.Clone()
+		if err != nil {
+			return err
+		}
+
+		group.Go(func() error {
+			bp := NewBlueprint(opts)
+			if err := bp.PartialDecode(); err != nil {
+				for _, c := range channels {
+					c <- worker{name: name, err: err}
+				}
+				return err
+			}
+
+			for len(deps[name]) != 0 {
+				log.Infof("%s: waiting for %s...", name, strings.Join(deps[name], ", "))
+
+				done := <-channels[idx]
+				deps = deps.Filter([]string{done.name})
+
+				if done.err != nil {
+					for _, c := range channels {
+						c <- worker{name: name, err: done.err}
+					}
+					return done.err
+				}
+
+				out = append(out, done.output...)
+			}
+
+			newOut, err := bp.Apply(name, out)
+			if err != nil {
+				for _, c := range channels {
+					c <- worker{name: name, err: err}
+				}
+				return err
+			}
+
+			for _, c := range channels {
+				c <- worker{name: name, output: newOut, err: nil}
+			}
+			return nil
+		})
+	}
+
+	return group.Wait()
+}
+
+func startSandbox(output tasks.Outputs, opts *Options) error {
+	blueprint := NewBlueprint(opts)
+	if err := blueprint.PartialDecode(); err != nil {
+		return err
+	}
+
+	ro := []string{opts.Path, opts.Config.Path, opts.Config.PrivateKey}
+	ro = append(ro, opts.Config.PublicKeys...)
+
+	for _, include := range blueprint.Includes {
+		ro = append(ro, include.Src)
+	}
+
+	for _, binding := range blueprint.Bindings {
+		for _, role := range binding.Roles {
+			ro = append(ro, role.Dir)
+		}
+	}
+
+	rw := []string{}
+	dev := []string{}
+
+	sshRO, sshRW, err := sshx.SandboxPaths()
+	if err != nil {
+		return err
+	}
+	ro = append(ro, sshRO...)
+	rw = append(rw, sshRW...)
+
+	qvmRO, qvmRW, qvmDev, err := qvm.SandboxPaths()
+	if err != nil {
+		return err
+	}
+	ro = append(ro, qvmRO...)
+	rw = append(rw, qvmRW...)
+	dev = append(dev, qvmDev...)
+
+	data, err := json.Marshal(&output)
+	if err != nil {
+		return err
+	}
+
+	_, err = sandbox.Exec(sandbox.Options{
+		Command: os.Args,
+		RO:      ro,
+		RW:      rw,
+		Dev:     dev,
+		Share:   sandbox.ShareNet,
+		Stdin:   bytes.NewReader(data),
+		Stderr:  process.LogrusOutput,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
