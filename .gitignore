@@ -1,0 +1,4 @@
+/.go/*
+/build/*
+/src/embeds/files/*
+/src/metadata/metadata.json
