@@ -19,6 +19,7 @@ type Config struct {
 	DefaultDirMode  os.FileMode `json:"default_dir_mode"  cty:"default_dir_mode"`
 	PrivateKey      string      `json:"private_key"       cty:"private_key"`
 	PublicKeys      []string    `json:"public_keys"       cty:"public_keys"`
+	Sandbox         string      `json:"sandbox"           cty:"sandbox"`
 	DryRun          bool        `json:"dry_run"`
 	Path            string      `json:"-"`
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/illikainen/go-cryptor/src/blob"
 	"github.com/illikainen/go-utils/src/base64"
 	"github.com/illikainen/go-utils/src/errorx"
-	"github.com/illikainen/go-utils/src/flag"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -18,8 +17,8 @@ import (
 
 var options struct {
 	*rootcmd.Options
-	input  flag.Path
-	output flag.Path
+	input  string
+	output string
 }
 
 var command = &cobra.Command{
@@ -36,13 +35,10 @@ func Command(opts *rootcmd.Options) *cobra.Command {
 func init() {
 	flags := command.Flags()
 
-	options.input.State = flag.MustExist
-	flags.VarP(&options.input, "input", "i", "File to unseal")
+	flags.StringVarP(&options.input, "input", "i", "", "File to unseal")
 	lo.Must0(command.MarkFlagRequired("input"))
 
-	options.output.State = flag.MustBeDir
-	options.output.Mode = flag.ReadWriteMode
-	flags.VarP(&options.output, "output", "o", "Output file for the unsealed blob")
+	flags.StringVarP(&options.output, "output", "o", "", "Output file for the unsealed blob")
 	lo.Must0(command.MarkFlagRequired("output"))
 }
 
@@ -54,7 +50,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		return err
 	}
 
-	input, err := os.Open(options.input.String())
+	input, err := os.Open(options.input)
 	if err != nil {
 		return err
 	}
@@ -74,7 +70,7 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		return err
 	}
 
-	output, err := os.Create(options.output.String())
+	output, err := os.Create(options.output)
 	if err != nil {
 		return err
 	}
@@ -85,6 +81,6 @@ func run(cmd *cobra.Command, _ []string) (err error) {
 		return err
 	}
 
-	log.Infof("successfully wrote unsealed blueprint to %s", options.output.String())
+	log.Infof("successfully wrote unsealed blueprint to %s", options.output)
 	return nil
 }

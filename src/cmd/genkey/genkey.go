@@ -7,14 +7,13 @@ import (
 	rootcmd "github.com/illikainen/orch/src/cmd/root"
 
 	"github.com/illikainen/go-cryptor/src/asymmetric"
-	"github.com/illikainen/go-utils/src/flag"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var options struct {
-	output flag.Path
+	output string
 	delay  time.Duration
 }
 
@@ -31,10 +30,7 @@ func Command(_ *rootcmd.Options) *cobra.Command {
 func init() {
 	flags := command.Flags()
 
-	options.output.State = flag.MustNotExist
-	options.output.Mode = flag.ReadWriteMode
-	options.output.Suffixes = []string{"pub", "priv"}
-	flags.VarP(&options.output, "output", "o",
+	flags.StringVarP(&options.output, "output", "o", "",
 		"Write the generated keypair to <output>.pub and <output>.priv")
 	lo.Must0(command.MarkFlagRequired("output"))
 
@@ -50,13 +46,13 @@ func run(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	pubFile := fmt.Sprintf("%s.pub", options.output.String())
+	pubFile := fmt.Sprintf("%s.pub", options.output)
 	err = pubKey.Write(pubFile)
 	if err != nil {
 		return err
 	}
 
-	privFile := fmt.Sprintf("%s.priv", options.output.String())
+	privFile := fmt.Sprintf("%s.priv", options.output)
 	err = privKey.Write(privFile)
 	if err != nil {
 		return err

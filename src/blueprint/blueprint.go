@@ -24,6 +24,7 @@ import (
 	"github.com/illikainen/go-cryptor/src/blob"
 	"github.com/illikainen/go-utils/src/base64"
 	"github.com/illikainen/go-utils/src/errorx"
+	"github.com/illikainen/go-utils/src/sandbox"
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +41,7 @@ type Options struct {
 	Path         string
 	Config       *configs.Config
 	Filter       Filter
+	Sandbox      sandbox.Sandbox
 	DryRun       bool
 	AllowMissing bool
 }

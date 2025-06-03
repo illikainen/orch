@@ -11,7 +11,6 @@ import (
 	"github.com/illikainen/orch/src/tasks"
 
 	"github.com/illikainen/go-netutils/src/sshx"
-	"github.com/illikainen/go-utils/src/process"
 	"github.com/illikainen/go-utils/src/sandbox"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -34,12 +33,7 @@ func Apply(opts *Options) error {
 	// Re-execute ourselves in a sandbox on compatible systems before applying
 	// on the remotes.
 	if sandbox.Compatible() && !sandbox.IsSandboxed() {
-		if err := startSandbox(output, opts); err != nil {
-			return err
-		}
-
-		// Execution continues below in the sandboxed subprocess.
-		os.Exit(0) // revive:disable-line:deep-exit
+		return startSandbox(output, opts)
 	}
 
 	return applyRemote(output, opts)
@@ -164,8 +158,9 @@ func startSandbox(output tasks.Outputs, opts *Options) error {
 		return err
 	}
 
-	ro := []string{opts.Path, opts.Config.Path, opts.Config.PrivateKey}
-	ro = append(ro, opts.Config.PublicKeys...)
+	ro := []string{opts.Path}
+	rw := []string{}
+	dev := []string{}
 
 	for _, include := range blueprint.Includes {
 		ro = append(ro, include.Src)
@@ -176,9 +171,6 @@ func startSandbox(output tasks.Outputs, opts *Options) error {
 			ro = append(ro, role.Dir)
 		}
 	}
-
-	rw := []string{}
-	dev := []string{}
 
 	sshRO, sshRW, err := sshx.SandboxPaths()
 	if err != nil {
@@ -195,23 +187,28 @@ func startSandbox(output tasks.Outputs, opts *Options) error {
 	rw = append(rw, qvmRW...)
 	dev = append(dev, qvmDev...)
 
+	err = opts.Sandbox.AddReadOnlyPath(ro...)
+	if err != nil {
+		return err
+	}
+
+	err = opts.Sandbox.AddReadWritePath(rw...)
+	if err != nil {
+		return err
+	}
+
+	err = opts.Sandbox.AddDevPath(dev...)
+	if err != nil {
+		return err
+	}
+
 	data, err := json.Marshal(&output)
 	if err != nil {
 		return err
 	}
+	opts.Sandbox.SetStdin(bytes.NewReader(data))
 
-	_, err = sandbox.Exec(sandbox.Options{
-		Command: os.Args,
-		RO:      ro,
-		RW:      rw,
-		Dev:     dev,
-		Share:   sandbox.ShareNet,
-		Stdin:   bytes.NewReader(data),
-		Stderr:  process.LogrusOutput,
-	})
-	if err != nil {
-		return err
-	}
+	opts.Sandbox.SetShareNet(true)
 
-	return nil
+	return opts.Sandbox.Confine()
 }
