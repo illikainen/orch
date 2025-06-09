@@ -7,7 +7,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/illikainen/go-cryptor v0.0.0-20250505122540-fd5a2321b8f5
 	github.com/illikainen/go-netutils v0.0.0-20250505122326-0e2700986716
-	github.com/illikainen/go-utils v0.0.0-20250505121911-a2d2eb85064b
+	github.com/illikainen/go-utils v0.0.0-20250609153058-d4566b4ba778
 	github.com/mattn/go-isatty v0.0.17
 	github.com/pkg/errors v0.9.1
 	github.com/samber/lo v1.37.0
