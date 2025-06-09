@@ -125,7 +125,16 @@ func buildSelf(in string, out string, goos string, goarch string) error {
 	log.Info(strings.Join(args, " "))
 
 	cmd := exec.Command(args[0], args[1:]...) // #nosec G204
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
+	cmd.Env = append(
+		os.Environ(),
+		"GOOS="+goos,
+		"GOARCH="+goarch,
+		"GOFLAGS=-mod=readonly",
+		"GOPROXY=off",
+		"LC_ALL=C",
+		"TZ=UTC",
+		"SOURCE_DATE_EPOCH=0",
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
