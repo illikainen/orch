@@ -1,8 +1,8 @@
 package hosts
 
 import (
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -18,8 +18,8 @@ func (h *Hosts) PartialDecode(filter *Filter) error {
 
 	for _, host := range *h {
 		if (len(filter.Hosts) == 0 && len(filter.Tags) == 0) ||
-			((len(filter.Hosts) == 0 || lo.Contains(filter.Hosts, host.Name)) &&
-				(len(filter.Tags) == 0 || len(lo.Intersect(filter.Tags, host.Tags)) > 0)) {
+			((len(filter.Hosts) == 0 || seq.Contains(filter.Hosts, host.Name)) &&
+				(len(filter.Tags) == 0 || len(seq.Intersect(filter.Tags, host.Tags)) > 0)) {
 			err := host.PartialDecode()
 			if err != nil {
 				return err
@@ -53,7 +53,7 @@ func (h *Hosts) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, host.Unique()) {
+		if seq.Contains(seen, host.Unique()) {
 			return errors.Errorf("\"%s\" is not unique", host.Unique())
 		}
 		seen = append(seen, host.Unique())

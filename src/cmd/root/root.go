@@ -10,9 +10,9 @@ import (
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/metadata"
 
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/process"
 	"github.com/illikainen/go-utils/src/sandbox"
-	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ func init() {
 	flags.SortFlags = false
 
 	flags.StringVarP(&options.config, "config", "",
-		filepath.Join(lo.Must1(os.UserConfigDir()), metadata.Name(), "config.hcl"),
+		filepath.Join(fn.Must1(os.UserConfigDir()), metadata.Name(), "config.hcl"),
 		"Configuration file")
 
 	flags.StringVarP(&options.sandbox, "sandbox", "", "", "Sandbox backend")
@@ -81,7 +81,7 @@ func preRun(_ *cobra.Command, _ []string) error {
 
 	options.Config = bp.Config
 
-	name := lo.Ternary(options.sandbox != "", options.sandbox, options.Config.Sandbox)
+	name := fn.Ternary(options.sandbox != "", options.sandbox, options.Config.Sandbox)
 	backend, err := sandbox.Backend(name)
 	if err != nil {
 		return err

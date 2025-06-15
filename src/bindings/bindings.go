@@ -1,8 +1,8 @@
 package bindings
 
 import (
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -42,7 +42,7 @@ func (b *Bindings) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, binding.Unique()) {
+		if seq.Contains(seen, binding.Unique()) {
 			return errors.Errorf("\"%s\" is not unique", binding.Unique())
 		}
 		seen = append(seen, binding.Unique())

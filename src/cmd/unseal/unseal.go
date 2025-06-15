@@ -10,7 +10,7 @@ import (
 	"github.com/illikainen/go-cryptor/src/blob"
 	"github.com/illikainen/go-utils/src/base64"
 	"github.com/illikainen/go-utils/src/errorx"
-	"github.com/samber/lo"
+	"github.com/illikainen/go-utils/src/fn"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -36,10 +36,10 @@ func init() {
 	flags := command.Flags()
 
 	flags.StringVarP(&options.input, "input", "i", "", "File to unseal")
-	lo.Must0(command.MarkFlagRequired("input"))
+	fn.Must(command.MarkFlagRequired("input"))
 
 	flags.StringVarP(&options.output, "output", "o", "", "Output file for the unsealed blob")
-	lo.Must0(command.MarkFlagRequired("output"))
+	fn.Must(command.MarkFlagRequired("output"))
 }
 
 func run(cmd *cobra.Command, _ []string) (err error) {

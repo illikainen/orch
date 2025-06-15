@@ -8,7 +8,7 @@ import (
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/samber/lo"
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -51,11 +51,11 @@ func (b *Binding) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
 }
 
 func (b *Binding) Match(host *hosts.Host) bool {
-	if lo.Contains(b.Hosts, host.Name) {
+	if seq.Contains(b.Hosts, host.Name) {
 		return true
 	}
 
-	if len(lo.Intersect(b.Tags, host.Tags)) > 0 {
+	if len(seq.Intersect(b.Tags, host.Tags)) > 0 {
 		return true
 	}
 

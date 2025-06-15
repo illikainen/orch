@@ -11,8 +11,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -108,7 +108,7 @@ func (r *Role) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, task.Unique()) {
+		if seq.Contains(seen, task.Unique()) {
 			return errors.Errorf("task \"%s\" is not unique", task.Unique())
 		}
 		seen = append(seen, task.Unique())
@@ -120,7 +120,7 @@ func (r *Role) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, v.Unique()) {
+		if seq.Contains(seen, v.Unique()) {
 			return errors.Errorf("task \"%s\" is not unique", v.Unique())
 		}
 		seen = append(seen, v.Unique())

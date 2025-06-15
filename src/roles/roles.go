@@ -2,8 +2,8 @@ package roles
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 )
 
 type Roles []*Role
@@ -42,7 +42,7 @@ func (r *Roles) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, role.Unique()) {
+		if seq.Contains(seen, role.Unique()) {
 			return errors.Errorf("\"%s\" is not unique", role.Unique())
 		}
 		seen = append(seen, role.Unique())

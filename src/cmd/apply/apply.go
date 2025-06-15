@@ -4,7 +4,7 @@ import (
 	"github.com/illikainen/orch/src/blueprint"
 	rootcmd "github.com/illikainen/orch/src/cmd/root"
 
-	"github.com/samber/lo"
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func init() {
 	flags.SortFlags = false
 
 	flags.StringVarP(&options.file, "file", "f", "", "Blueprint to apply")
-	lo.Must0(command.MarkFlagRequired("file"))
+	fn.Must(command.MarkFlagRequired("file"))
 
 	flags.StringSliceVarP(&options.hosts, "host", "h", nil,
 		"Only apply on these host(s).  May be provided multiple times")

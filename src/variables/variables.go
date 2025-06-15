@@ -2,8 +2,8 @@ package variables
 
 import (
 	"github.com/hashicorp/hcl/v2"
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -51,7 +51,7 @@ func (v *Variables) Validate() error {
 			return err
 		}
 
-		if lo.Contains(seen, elt.Unique()) {
+		if seq.Contains(seen, elt.Unique()) {
 			return errors.Errorf("\"%s\" is not unique", elt.Unique())
 		}
 		seen = append(seen, elt.Unique())

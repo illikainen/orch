@@ -22,11 +22,13 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/illikainen/go-cryptor/src/blob"
+	"github.com/illikainen/go-utils/src/assoc"
 	"github.com/illikainen/go-utils/src/base64"
 	"github.com/illikainen/go-utils/src/errorx"
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/sandbox"
+	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -61,7 +63,7 @@ type Blueprint struct {
 
 func NewBlueprint(opts *Options) *Blueprint {
 	return &Blueprint{
-		Config:       lo.Ternary(opts.Config != nil, opts.Config, &configs.Config{}),
+		Config:       fn.Ternary(opts.Config != nil, opts.Config, &configs.Config{}),
 		Dependencies: map[string][]string{},
 		functions:    localFunctions(),
 		opts:         opts,
@@ -120,10 +122,10 @@ func (b *Blueprint) PartialDecode() error {
 				deps = append(deps, binding.Dependencies...)
 			}
 		}
-		deps = lo.Uniq(lo.Without(deps, host.Name))
+		deps = seq.Uniq(seq.Filter(deps, host.Name))
 
 		for _, dep := range deps {
-			if !lo.ContainsBy(b.Hosts, func(h *hosts.Host) bool {
+			if !seq.ContainsBy(b.Hosts, func(h *hosts.Host) bool {
 				return h.Name == dep
 			}) {
 				return errors.Errorf("%s depends on %s but %s is not scheduled to be applied",
@@ -225,7 +227,7 @@ func (b *Blueprint) partialDecodeMerge(path string) (err error) {
 	}
 
 	b.Includes = append(b.Includes, tmp.Includes...)
-	b.Config = lo.Ternary(tmp.Config != nil, tmp.Config, b.Config)
+	b.Config = fn.Ternary(tmp.Config != nil, tmp.Config, b.Config)
 	b.Variables = append(b.Variables, tmp.Variables...)
 	b.Hosts = append(b.Hosts, tmp.Hosts...)
 	b.Bindings = append(b.Bindings, tmp.Bindings...)
@@ -250,7 +252,7 @@ func (b *Blueprint) Apply(name string, o tasks.Outputs) (output tasks.Outputs, e
 		return nil, err
 	}
 
-	host, ok := lo.Find(b.Hosts, func(h *hosts.Host) bool {
+	host, ok := seq.FindBy(b.Hosts, func(h *hosts.Host) bool {
 		return h.Name == name
 	})
 	if !ok {
@@ -279,7 +281,7 @@ func (b *Blueprint) Apply(name string, o tasks.Outputs) (output tasks.Outputs, e
 	}
 	b.facts = facts
 
-	b.functions = lo.Assign(b.functions, host.Connector.Functions())
+	b.functions = assoc.Merge(b.functions, host.Connector.Functions())
 
 	for _, binding := range b.Bindings {
 		if !binding.Match(host) {

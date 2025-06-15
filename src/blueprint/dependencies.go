@@ -1,7 +1,7 @@
 package blueprint
 
 import (
-	"github.com/samber/lo"
+	"github.com/illikainen/go-utils/src/seq"
 )
 
 type Dependencies map[string][]string
@@ -9,7 +9,7 @@ type Dependencies map[string][]string
 func (d *Dependencies) Filter(hosts []string) Dependencies {
 	deps := Dependencies{}
 	for host, depHosts := range *d {
-		deps[host] = lo.Without(depHosts, hosts...)
+		deps[host] = seq.Filter(depHosts, hosts...)
 	}
 
 	return deps
