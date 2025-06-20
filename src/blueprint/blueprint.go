@@ -2,6 +2,7 @@ package blueprint
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"io/fs"
 	"os"
@@ -14,7 +15,8 @@ import (
 	"github.com/illikainen/orch/src/hosts"
 	"github.com/illikainen/orch/src/includes"
 	"github.com/illikainen/orch/src/metadata"
-	"github.com/illikainen/orch/src/tasks"
+	"github.com/illikainen/orch/src/rpc"
+	"github.com/illikainen/orch/src/tasks/outputs"
 	"github.com/illikainen/orch/src/utils"
 	"github.com/illikainen/orch/src/variables"
 
@@ -56,7 +58,7 @@ type Blueprint struct {
 	Bindings     bindings.Bindings   `hcl:"bind,block"`
 	Dependencies Dependencies
 	facts        *fact.Facts
-	output       tasks.Outputs
+	output       outputs.Outputs
 	functions    map[string]function.Function
 	opts         *Options
 }
@@ -234,7 +236,7 @@ func (b *Blueprint) partialDecodeMerge(path string) (err error) {
 	return nil
 }
 
-func (b *Blueprint) Apply(name string, o tasks.Outputs) (output tasks.Outputs, err error) {
+func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Outputs, err error) {
 	b.output = o
 
 	err = b.Includes.Decode(b.evalContext)
@@ -275,11 +277,25 @@ func (b *Blueprint) Apply(name string, o tasks.Outputs) (output tasks.Outputs, e
 		return nil, err
 	}
 
-	facts, err := host.Connector.GatherFacts()
+	ctrl, err := host.Connector.Start()
 	if err != nil {
 		return nil, err
 	}
-	b.facts = facts
+	defer errorx.Defer(ctrl.Close, &err)
+
+	factsData, err := ctrl.Call(&rpc.FunctionCall{
+		Function: "gather_facts",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var facts fact.Facts
+	err = json.Unmarshal(factsData, &facts)
+	if err != nil {
+		return nil, err
+	}
+	b.facts = &facts
 
 	b.functions = assoc.Merge(b.functions, host.Connector.Functions())
 
@@ -304,25 +320,20 @@ func (b *Blueprint) Apply(name string, o tasks.Outputs) (output tasks.Outputs, e
 					continue
 				}
 
-				outputter, err := host.Connector.Apply(task)
+				out, err := task.Apply(ctrl)
 				if err != nil {
 					return nil, errors.Errorf("%s: %s.%s: %s", host.Name, role.Name, task.Name, err)
-				}
-
-				out, ok := outputter.(*tasks.Output)
-				if !ok {
-					return nil, errors.Errorf("bug")
 				}
 
 				b.output = append(b.output, out)
 				output = append(output, out)
 
 				status := "up-to-date"
-				if outputter.IsChanged() {
+				if out.IsChanged() {
 					status = "changed"
 				}
 				log.Infof("%s: %s.%s: %s", host.Name, role.Name, task.Name, status)
-				for typ, diffs := range outputter.Differences() {
+				for typ, diffs := range out.Differences() {
 					if len(diffs) > 0 {
 						log.Infof("    %s\n    %s\n", typ, strings.Repeat("-", len(typ)))
 

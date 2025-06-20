@@ -1,11 +1,10 @@
 package hosts
 
 import (
-	"github.com/illikainen/orch/src/fact"
 	"github.com/illikainen/orch/src/hosts/local"
 	"github.com/illikainen/orch/src/hosts/qvm"
 	"github.com/illikainen/orch/src/hosts/ssh"
-	"github.com/illikainen/orch/src/tasks"
+	"github.com/illikainen/orch/src/rpc/controller"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
@@ -20,11 +19,10 @@ type Connector interface {
 	Include() bool
 	Value() cty.Value
 	Dial() error
-	Close() error
 	UploadBinary() error
-	GatherFacts() (*fact.Facts, error)
+	Start() (*controller.Controller, error)
+	Close() error
 	Functions() map[string]function.Function
-	Apply(task *tasks.Task) (tasks.Outputter, error)
 }
 
 type Host struct {

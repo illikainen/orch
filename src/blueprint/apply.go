@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/illikainen/orch/src/hosts/qvm"
-	"github.com/illikainen/orch/src/tasks"
+	"github.com/illikainen/orch/src/tasks/outputs"
 
 	"github.com/illikainen/go-netutils/src/sshx"
 	"github.com/illikainen/go-utils/src/sandbox"
@@ -18,7 +18,7 @@ import (
 )
 
 func Apply(opts *Options) error {
-	output := tasks.Outputs{}
+	output := outputs.Outputs{}
 
 	// Apply local changes first in case localhost needs to be hardened before
 	// communicating with remotes.
@@ -39,13 +39,13 @@ func Apply(opts *Options) error {
 	return applyRemote(output, opts)
 }
 
-func applyLocal(opts *Options) (tasks.Outputs, error) {
+func applyLocal(opts *Options) (outputs.Outputs, error) {
 	blueprint := NewBlueprint(opts)
 	if err := blueprint.PartialDecode(); err != nil {
 		return nil, err
 	}
 
-	output := tasks.Outputs{}
+	output := outputs.Outputs{}
 	for _, host := range blueprint.Hosts {
 		if host.Type == "local" {
 			out, err := blueprint.Apply(host.Name, output)
@@ -61,11 +61,11 @@ func applyLocal(opts *Options) (tasks.Outputs, error) {
 
 type worker struct {
 	name   string
-	output tasks.Outputs
+	output outputs.Outputs
 	err    error
 }
 
-func applyRemote(output tasks.Outputs, opts *Options) error {
+func applyRemote(output outputs.Outputs, opts *Options) error {
 	// The output from non-sandboxed local applies is sent as JSON on stdin
 	// to sandboxed subprocesses.
 	if sandbox.IsSandboxed() {
@@ -152,7 +152,7 @@ func applyRemote(output tasks.Outputs, opts *Options) error {
 	return group.Wait()
 }
 
-func startSandbox(output tasks.Outputs, opts *Options) error {
+func startSandbox(output outputs.Outputs, opts *Options) error {
 	blueprint := NewBlueprint(opts)
 	if err := blueprint.PartialDecode(); err != nil {
 		return err

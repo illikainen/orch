@@ -1,19 +1,16 @@
 package ssh
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/illikainen/orch/src/embeds"
-	"github.com/illikainen/orch/src/fact"
 	"github.com/illikainen/orch/src/metadata"
-	"github.com/illikainen/orch/src/tasks"
+	"github.com/illikainen/orch/src/rpc/controller"
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
@@ -21,10 +18,10 @@ import (
 	"github.com/illikainen/go-netutils/src/sshx"
 	"github.com/illikainen/go-utils/src/errorx"
 	"github.com/illikainen/go-utils/src/iofs"
-	"github.com/illikainen/go-utils/src/process"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
+	"golang.org/x/crypto/ssh"
 )
 
 type Host struct {
@@ -39,6 +36,7 @@ type Host struct {
 	os        string
 	arch      string
 	value     cty.Value
+	session   *ssh.Session
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
@@ -154,13 +152,6 @@ func (h *Host) Name() string {
 	return h.name
 }
 
-func (h *Host) Close() error {
-	if h.conn != nil {
-		return h.conn.Close()
-	}
-	return nil
-}
-
 func (h *Host) UploadBinary() (err error) {
 	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.os, h.arch)
 	f, err := embeds.OpenBin(name)
@@ -235,45 +226,48 @@ func (h *Host) UploadBinary() (err error) {
 	return nil
 }
 
-func (h *Host) GatherFacts() (*fact.Facts, error) {
-	out, err := h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("'%s' _gather-facts", h.bin),
-	})
+func (h *Host) Start() (*controller.Controller, error) {
+	session, err := h.conn.NewSession()
 	if err != nil {
 		return nil, err
 	}
 
-	facts := &fact.Facts{}
-	err = json.Unmarshal(out.Stdout, facts)
+	w, err := session.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
 
-	return facts, nil
+	r, err := session.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	err = session.Start(fmt.Sprintf("'%s' _rpc", strings.ReplaceAll(h.bin, "'", "'\\''")))
+	if err != nil {
+		return nil, err
+	}
+	h.session = session
+
+	ctrl := controller.New(r, w)
+	err = ctrl.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	return ctrl, nil
 }
 
-func (h *Host) Apply(task *tasks.Task) (tasks.Outputter, error) {
-	data, err := json.MarshalIndent(task, "", "    ")
-	if err != nil {
-		return nil, err
-	}
-	log.Tracef("ssh: apply %s", data)
+func (h *Host) Close() error {
+	errs := []error{}
 
-	out, err := h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("'%s' _apply-task", h.bin),
-		Become:  h.Become,
-		Stdin:   bytes.NewReader(data),
-		Stderr:  process.LogrusOutput,
-	})
-	if err != nil {
-		return nil, err
+	if h.session != nil {
+		log.Debugf("%s: waiting for rpc worker...", h.name)
+		errs = append(errs, errors.WithStack(h.session.Wait()))
 	}
 
-	output := &tasks.Output{}
-	err = json.Unmarshal(out.Stdout, output)
-	if err != nil {
-		return nil, err
+	if h.conn != nil {
+		errs = append(errs, errors.WithStack(h.conn.Close()))
 	}
 
-	return output, nil
+	return errorx.Join(errs...)
 }

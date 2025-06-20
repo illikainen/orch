@@ -4,20 +4,15 @@ import (
 	"encoding/json"
 
 	"github.com/illikainen/orch/src/configs"
-	"github.com/illikainen/orch/src/tasks/file_manage"
+	"github.com/illikainen/orch/src/rpc"
+	"github.com/illikainen/orch/src/rpc/controller"
+	"github.com/illikainen/orch/src/tasks/decode"
+	_ "github.com/illikainen/orch/src/tasks/file_manage" // decoder
+	"github.com/illikainen/orch/src/tasks/outputs"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
 )
-
-type Runner interface {
-	Decode(hcl.Body, *hcl.EvalContext, *configs.Config) error
-	Validate() error
-	Include() bool
-	Value() cty.Value
-	Apply() (any, error)
-}
 
 type Task struct {
 	Type         string          `json:"type"      hcl:"type,label"`
@@ -25,9 +20,9 @@ type Task struct {
 	Body         hcl.Body        `json:"-"         hcl:"body,remain"`
 	Host         string          `json:"host"`
 	Role         string          `json:"role"`
-	Runner       json.RawMessage `json:"runner"`
+	Decoder      json.RawMessage `json:"decoder"`
 	Dependencies []string        `json:"-"`
-	runner       Runner
+	decoder      decode.Decoder
 }
 
 func (t *Task) PartialDecode() error {
@@ -58,21 +53,21 @@ func (t *Task) Decode(role string, host string, ctxfn func() (*hcl.EvalContext, 
 		return err
 	}
 
-	runner, err := t.getRunner()
+	decoder, err := decode.Lookup(t.Type)
 	if err != nil {
 		return err
 	}
 
-	err = runner.Decode(t.Body, ctx, config)
+	err = decoder.Decode(t.Body, ctx, config)
 	if err != nil {
 		return err
 	}
 
-	t.runner = runner
+	t.decoder = decoder
 	t.Role = role
 	t.Host = host
 
-	return runner.Validate()
+	return decoder.Validate()
 }
 
 func (t *Task) Validate() error {
@@ -80,27 +75,34 @@ func (t *Task) Validate() error {
 }
 
 func (t *Task) Include() bool {
-	return t.runner.Include()
+	return t.decoder.Include()
 }
 
-func (t *Task) Apply() (Outputter, error) {
-	output, err := t.runner.Apply()
+func (t *Task) Apply(ctrl *controller.Controller) (*outputs.Output, error) {
+	data, err := json.Marshal(t.decoder)
 	if err != nil {
 		return nil, err
 	}
 
-	outputter, err := json.Marshal(output)
+	rv, err := ctrl.Call(&rpc.FunctionCall{
+		Function: t.Type,
+		Data:     data,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Output{
-		Type:      t.Type,
-		Host:      t.Host,
-		Role:      t.Role,
-		Name:      t.Name,
-		Outputter: outputter,
-	}, nil
+	var output outputs.Output
+	err = json.Unmarshal(rv, &output)
+	if err != nil {
+		return nil, err
+	}
+	output.Type = t.Type
+	output.Name = t.Name
+	output.Host = t.Host
+	output.Role = t.Role
+
+	return &output, nil
 }
 
 func (t *Task) Unique() string {
@@ -108,8 +110,8 @@ func (t *Task) Unique() string {
 }
 
 func (t *Task) Value() cty.Value {
-	if t.runner != nil {
-		return t.runner.Value()
+	if t.decoder != nil {
+		return t.decoder.Value()
 	}
 	return cty.NilVal
 }
@@ -118,11 +120,11 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	type alias Task
 	task := alias(*t)
 
-	runner, err := json.Marshal(t.runner)
+	decoder, err := json.Marshal(t.decoder)
 	if err != nil {
 		return nil, err
 	}
-	task.Runner = runner
+	task.Decoder = decoder
 
 	return json.Marshal(task)
 }
@@ -137,24 +139,16 @@ func (t *Task) UnmarshalJSON(data []byte) error {
 	}
 	*t = Task(*task)
 
-	runner, err := t.getRunner()
+	decoder, err := decode.Lookup(t.Type)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(t.Runner, runner)
+	err = json.Unmarshal(t.Decoder, decoder)
 	if err != nil {
 		return err
 	}
-	t.runner = runner
+	t.decoder = decoder
 
 	return nil
-}
-
-func (t *Task) getRunner() (Runner, error) {
-	switch t.Type { // revive:disable-line:unnecessary-stmt
-	case "file_manage":
-		return &file_manage.Task{}, nil
-	}
-	return nil, errors.Errorf("%s is not a valid task type for %s", t.Type, t.Name)
 }

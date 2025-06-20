@@ -1,26 +1,23 @@
 package qvm
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/illikainen/orch/src/embeds"
-	"github.com/illikainen/orch/src/fact"
 	"github.com/illikainen/orch/src/metadata"
-	"github.com/illikainen/orch/src/tasks"
+	"github.com/illikainen/orch/src/rpc/controller"
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/illikainen/go-utils/src/errorx"
 	"github.com/illikainen/go-utils/src/iofs"
-	"github.com/illikainen/go-utils/src/process"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
@@ -36,6 +33,7 @@ type Host struct {
 	os        string
 	arch      string
 	value     cty.Value
+	cmd       *exec.Cmd
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
@@ -133,10 +131,6 @@ func (h *Host) Name() string {
 	return h.name
 }
 
-func (h *Host) Close() error {
-	return nil
-}
-
 func (h *Host) UploadBinary() (err error) {
 	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.os, h.arch)
 	f, err := embeds.OpenBin(name)
@@ -208,50 +202,42 @@ func (h *Host) UploadBinary() (err error) {
 	return nil
 }
 
-func (h *Host) GatherFacts() (*fact.Facts, error) {
-	out, err := Exec(&ExecOptions{
-		Name:    h.Hostname,
-		Command: []string{h.bin, "_gather-facts"},
-	})
+func (h *Host) Start() (*controller.Controller, error) {
+	cmd := exec.Command("/bin/sh", "/usr/bin/qvm-run-vm", h.Hostname, h.bin, "--", "_rpc") // #nosec G204
+	w, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
 	}
 
-	facts := &fact.Facts{}
-	err = json.Unmarshal(out.Stdout, facts)
+	r, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, err
 	}
 
-	return facts, nil
+	err = cmd.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	ctrl := controller.New(r, w)
+	err = ctrl.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	h.cmd = cmd
+	return ctrl, nil
+}
+
+func (h *Host) Close() error {
+	if h.cmd != nil {
+		log.Debugf("%s: waiting for rpc worker...", h.name)
+		return h.cmd.Wait()
+	}
+
+	return nil
 }
 
 func (h *Host) Functions() map[string]function.Function {
 	return nil
-}
-
-func (h *Host) Apply(task *tasks.Task) (tasks.Outputter, error) {
-	data, err := json.MarshalIndent(task, "", "    ")
-	if err != nil {
-		return nil, err
-	}
-	log.Tracef("qvm: apply %s", data)
-
-	out, err := Exec(&ExecOptions{
-		Name:    h.Hostname,
-		Command: []string{h.bin, "_apply-task"},
-		Stdin:   bytes.NewReader(data),
-		Stderr:  process.LogrusOutput,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	output := &tasks.Output{}
-	err = json.Unmarshal(out.Stdout, output)
-	if err != nil {
-		return nil, err
-	}
-
-	return output, nil
 }

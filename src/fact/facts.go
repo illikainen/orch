@@ -3,17 +3,23 @@ package fact
 import (
 	"os"
 
+	"github.com/illikainen/orch/src/rpc/worker"
 	"github.com/illikainen/orch/src/utils"
 
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/zclconf/go-cty/cty"
 )
+
+func init() {
+	fn.Must(worker.Register("gather_facts", GatherFacts))
+}
 
 type Facts struct {
 	Hostname string `cty:"hostname"`
 	OS       *OS    `cty:"os"`
 }
 
-func GatherFacts() (*Facts, error) {
+func GatherFacts(_ []byte) (any, error) {
 	facts := &Facts{}
 
 	var err error
