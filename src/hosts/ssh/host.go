@@ -33,8 +33,7 @@ type Host struct {
 	name      string
 	conn      *sshx.Client
 	bin       string
-	os        string
-	arch      string
+	sys       *sysinfo
 	value     cty.Value
 	session   *ssh.Session
 }
@@ -84,7 +83,6 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 		h.Hostname = name
 	}
 
-	h.bin = filepath.Join(filepath.Join(".cache", metadata.Name()), "bin", metadata.Name())
 	h.value = value
 
 	return nil
@@ -114,38 +112,58 @@ func (h *Host) Dial() error {
 	}
 	h.conn = conn
 
-	goos, goarch, err := h.getInfo()
+	info, err := h.getSysInfo()
 	if err != nil {
 		return err
 	}
-	log.Debugf("os=%s, arch=%s", goos, goarch)
-	h.os = goos
-	h.arch = goarch
+	log.Debugf("os=%s, arch=%s, home=%s", info.os, info.arch, info.home)
+	h.sys = info
+	h.bin = filepath.Join(info.home, ".cache", metadata.Name(), "bin", metadata.Name())
 
 	return nil
 }
 
+type sysinfo struct {
+	os   string
+	arch string
+	home string
+}
+
 // We need to get this information to know which binary to upload to gather
 // facts and execute tasks.
-func (h *Host) getInfo() (os string, arch string, err error) {
-	out, err := h.conn.Exec(&sshx.ExecOptions{
+func (h *Host) getSysInfo() (*sysinfo, error) {
+	uname, err := h.conn.Exec(&sshx.ExecOptions{
 		Command: "uname -s -m",
+		Become:  h.Become,
 	})
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	elts := strings.Split(strings.TrimRight(string(out.Stdout), "\n"), " ")
+	elts := strings.Split(strings.TrimRight(string(uname.Stdout), "\n"), " ")
 	if len(elts) != 2 {
-		return "", "", errors.Errorf("invalid output: %s", out.Stdout)
+		return nil, errors.Errorf("invalid output: %s", uname.Stdout)
 	}
 
-	arch = elts[1]
+	arch := elts[1]
 	if arch == "x86_64" {
 		arch = "amd64"
 	}
 
-	return strings.ToLower(elts[0]), arch, nil
+	printenv, err := h.conn.Exec(&sshx.ExecOptions{
+		Command: "printenv HOME",
+		Become:  h.Become,
+	})
+	if err != nil {
+		return nil, err
+	}
+	home := strings.TrimRight(string(printenv.Stdout), "\n")
+
+	return &sysinfo{
+		os:   strings.ToLower(elts[0]),
+		arch: arch,
+		home: home,
+	}, nil
 }
 
 func (h *Host) Name() string {
@@ -153,7 +171,7 @@ func (h *Host) Name() string {
 }
 
 func (h *Host) UploadBinary() (err error) {
-	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.os, h.arch)
+	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.sys.os, h.sys.arch)
 	f, err := embeds.OpenBin(name)
 	if err != nil {
 		return err
@@ -179,7 +197,8 @@ func (h *Host) UploadBinary() (err error) {
 	log.Tracef("%s: %s: sha256=%s", h.Hostname, name, cksum)
 
 	out, err := h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("sha256sum -- '%s'", h.bin),
+		Command: fmt.Sprintf("sha256sum -- '%s'", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Become:  h.Become,
 	})
 	if err == nil {
 		elts := strings.Split(string(out.Stdout), " ")
@@ -194,30 +213,26 @@ func (h *Host) UploadBinary() (err error) {
 	}
 
 	log.Infof("%s: uploading %s to %s", h.Hostname, name, h.bin)
-	sftp, err := h.conn.NewSFTPClient()
-	if err != nil {
-		return err
-	}
-	defer errorx.Defer(sftp.Close, &err)
-
-	err = sftp.MkdirAll(filepath.Dir(h.bin))
-	if err != nil {
-		return err
-	}
-
-	file, err := sftp.Create(h.bin)
-	if err != nil {
-		return err
-	}
-	defer errorx.Defer(file.Close, &err)
-
-	err = iofs.Copy(file, f)
+	_, err = h.conn.Exec(&sshx.ExecOptions{
+		Command: fmt.Sprintf("mkdir -p -- '%s'", strings.ReplaceAll(filepath.Dir(h.bin), "'", "'\\''")),
+		Become:  h.Become,
+	})
 	if err != nil {
 		return err
 	}
 
 	_, err = h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("chmod +x -- '%s'", h.bin),
+		Command: fmt.Sprintf("tee -- %s", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Become:  h.Become,
+		Stdin:   f,
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = h.conn.Exec(&sshx.ExecOptions{
+		Command: fmt.Sprintf("chmod +x -- '%s'", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Become:  h.Become,
 	})
 	if err != nil {
 		return err
@@ -242,7 +257,18 @@ func (h *Host) Start() (*controller.Controller, error) {
 		return nil, err
 	}
 
-	err = session.Start(fmt.Sprintf("'%s' _rpc", strings.ReplaceAll(h.bin, "'", "'\\''")))
+	cmd := fmt.Sprintf("'%s' _rpc", strings.ReplaceAll(h.bin, "'", "'\\''"))
+	if h.Become != "" {
+		esc, err := h.conn.Become(h.Become)
+		if err != nil {
+			return nil, err
+		}
+
+		cmd = fmt.Sprintf("%s %s", esc, cmd)
+	}
+
+	log.Tracef("exec: %s", cmd)
+	err = session.Start(cmd)
 	if err != nil {
 		return nil, err
 	}

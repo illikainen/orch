@@ -9,14 +9,21 @@ import (
 type ExecOptions struct {
 	Name    string
 	Command []string
+	Become  string
 	Stdin   io.Reader
 	Stdout  process.OutputFunc
 	Stderr  process.OutputFunc
 }
 
 func Exec(opts *ExecOptions) (*process.ExecOutput, error) {
+	cmd := []string{"/bin/sh", "/usr/bin/qvm-run-vm", "--", opts.Name}
+	if opts.Become != "" {
+		cmd = append(cmd, become(opts.Become)...)
+	}
+	cmd = append(cmd, opts.Command...)
+
 	o := &process.ExecOptions{
-		Command: append([]string{"sh", "/usr/bin/qvm-run-vm", opts.Name, "--"}, opts.Command...),
+		Command: cmd,
 		Stdin:   opts.Stdin,
 		Stdout:  opts.Stdout,
 		Stderr:  opts.Stderr,
@@ -38,4 +45,8 @@ func SandboxPaths() (ro []string, rw []string, dev []string, err error) {
 	}
 
 	return ro, nil, dev, nil
+}
+
+func become(username string) []string {
+	return []string{"sudo", "-u", username}
 }

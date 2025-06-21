@@ -30,8 +30,7 @@ type Host struct {
 	Become    string
 	name      string
 	bin       string
-	os        string
-	arch      string
+	sys       *sysinfo
 	value     cty.Value
 	cmd       *exec.Cmd
 }
@@ -73,7 +72,6 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 		h.Hostname = name
 	}
 
-	h.bin = filepath.Join(filepath.Join(".cache", metadata.Name()), "bin", metadata.Name())
 	h.value = value
 
 	return nil
@@ -94,37 +92,58 @@ func (h *Host) Value() cty.Value {
 func (h *Host) Dial() error {
 	log.Debugf("qvm: connecting to %s", h.Hostname)
 
-	goos, goarch, err := h.getInfo()
+	info, err := h.getSysInfo()
 	if err != nil {
 		return err
 	}
-	log.Debugf("os=%s, arch=%s", goos, goarch)
-	h.os = goos
-	h.arch = goarch
+	log.Debugf("os=%s, arch=%s, home=%s", info.os, info.arch, info.home)
+	h.sys = info
+	h.bin = filepath.Join(info.home, ".cache", metadata.Name(), "bin", metadata.Name())
 
 	return nil
 }
 
-func (h *Host) getInfo() (os string, arch string, err error) {
-	out, err := Exec(&ExecOptions{
+type sysinfo struct {
+	os   string
+	arch string
+	home string
+}
+
+func (h *Host) getSysInfo() (*sysinfo, error) {
+	uname, err := Exec(&ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"uname", "-s", "-m"},
+		Become:  h.Become,
 	})
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	elts := strings.Split(strings.TrimRight(string(out.Stdout), "\n"), " ")
+	elts := strings.Split(strings.TrimRight(string(uname.Stdout), "\n"), " ")
 	if len(elts) != 2 {
-		return "", "", errors.Errorf("invalid output: %s", out.Stdout)
+		return nil, errors.Errorf("invalid output: %s", uname.Stdout)
 	}
 
-	arch = elts[1]
+	arch := elts[1]
 	if arch == "x86_64" {
 		arch = "amd64"
 	}
 
-	return strings.ToLower(elts[0]), arch, nil
+	printenv, err := Exec(&ExecOptions{
+		Name:    h.Hostname,
+		Command: []string{"printenv", "HOME"},
+		Become:  h.Become,
+	})
+	if err != nil {
+		return nil, err
+	}
+	home := strings.TrimRight(string(printenv.Stdout), "\n")
+
+	return &sysinfo{
+		os:   strings.ToLower(elts[0]),
+		arch: arch,
+		home: home,
+	}, nil
 }
 
 func (h *Host) Name() string {
@@ -132,7 +151,7 @@ func (h *Host) Name() string {
 }
 
 func (h *Host) UploadBinary() (err error) {
-	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.os, h.arch)
+	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.sys.os, h.sys.arch)
 	f, err := embeds.OpenBin(name)
 	if err != nil {
 		return err
@@ -160,6 +179,7 @@ func (h *Host) UploadBinary() (err error) {
 	out, err := Exec(&ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"sha256sum", "--", h.bin},
+		Become:  h.Become,
 	})
 	if err == nil {
 		elts := strings.Split(string(out.Stdout), " ")
@@ -176,7 +196,8 @@ func (h *Host) UploadBinary() (err error) {
 	log.Infof("%s: uploading %s to %s", h.Hostname, name, h.bin)
 	_, err = Exec(&ExecOptions{
 		Name:    h.Hostname,
-		Command: []string{"umask u=rwx,g=,o= && mkdir -p -- " + filepath.Dir(h.bin)},
+		Command: []string{"mkdir -p -- " + filepath.Dir(h.bin)},
+		Become:  h.Become,
 	})
 	if err != nil {
 		return err
@@ -184,7 +205,8 @@ func (h *Host) UploadBinary() (err error) {
 
 	_, err = Exec(&ExecOptions{
 		Name:    h.Hostname,
-		Command: []string{"umask u=rwx,g=,o= && tee -- " + h.bin},
+		Command: []string{"tee -- " + h.bin},
+		Become:  h.Become,
 		Stdin:   f,
 	})
 	if err != nil {
@@ -194,6 +216,7 @@ func (h *Host) UploadBinary() (err error) {
 	_, err = Exec(&ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"chmod", "u+x", "--", h.bin},
+		Become:  h.Become,
 	})
 	if err != nil {
 		return err
@@ -203,7 +226,15 @@ func (h *Host) UploadBinary() (err error) {
 }
 
 func (h *Host) Start() (*controller.Controller, error) {
-	cmd := exec.Command("/bin/sh", "/usr/bin/qvm-run-vm", h.Hostname, h.bin, "--", "_rpc") // #nosec G204
+	args := []string{"/bin/sh", "/usr/bin/qvm-run-vm", "--", h.Hostname}
+	if h.Become != "" {
+		args = append(args, become(h.Become)...)
+	}
+	args = append(args, h.bin, "_rpc")
+
+	log.Tracef("exec: %s", strings.Join(args, " "))
+	cmd := exec.Command(args[0], args[1:]...) // #nosec G204
+
 	w, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, err
