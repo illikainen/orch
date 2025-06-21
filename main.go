@@ -8,6 +8,7 @@ import (
 	"github.com/illikainen/orch/src/cmd"
 
 	"github.com/fatih/color"
+	"github.com/illikainen/go-utils/src/errorx"
 	"github.com/illikainen/go-utils/src/logging"
 	"github.com/illikainen/go-utils/src/sandbox"
 	"github.com/mattn/go-isatty"
@@ -24,7 +25,17 @@ func main() {
 
 	err := cmd.Command().Execute()
 	if err != nil {
-		log.Tracef("%+v", err)
+		stacktrace(err)
 		log.Fatalf("%s", err)
+	}
+}
+
+func stacktrace(err error) {
+	if multi, ok := err.(*errorx.MultiError); ok {
+		for _, e := range multi.Errors() {
+			stacktrace(e)
+		}
+	} else {
+		log.Tracef("pid=%d, type=%T, stacktrace=%+v", os.Getpid(), err, err)
 	}
 }
