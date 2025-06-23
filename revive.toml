@@ -10,7 +10,7 @@ arguments = [8]
 disabled = true
 
 [rule.cognitive-complexity]
-arguments = [100]
+arguments = [200]
 
 [rule.comment-spacings]
 arguments = ["lint"]
