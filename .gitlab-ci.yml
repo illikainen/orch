@@ -19,7 +19,7 @@ before_script:
   # Prepare packages
   - apt-get update
   - apt-get -y dist-upgrade
-  - apt-get -y install ca-certificates git golang make
+  - apt-get -y install ca-certificates git golang make openssl
   # Configure signing key
   - echo 'dev-personal-git@iodine ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOaK5/rx1e5OSInMYOwoLeGyIwi7Hpao0qUC4oyO0/Wr' >"${HOME}/.signers"
   # Verify repo and checkout the correct ref
@@ -50,8 +50,11 @@ build-job:
     - GOOS=windows GOARCH=amd64 go build -o "build/release/${CI_PROJECT_NAME}-windows-amd64"
         -mod=readonly -trimpath -buildmode=pie -ldflags="-s -w -buildid="
     # Checksums
-    - find build ! -type d ! -name SHA256SUMS -exec sha256sum --tag '{}' \; >build/SHA256SUMS
-    - cat build/SHA256SUMS |sort
+    - find build ! -type d -exec sha256sum --tag '{}' \; >SHA256SUMS
+    - cat SHA256SUMS |sort
+    - find build ! -type d -exec openssl blake2s256 '{}' \; >BLAKE256SUMS
+    - cat BLAKE256SUMS |sort
+    - mv SHA256SUMS BLAKE256SUMS build/
   artifacts:
     paths:
       - ./build
