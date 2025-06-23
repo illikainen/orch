@@ -34,8 +34,14 @@ func New(r io.Reader, w io.Writer) *Controller {
 }
 
 func (c *Controller) Call(opts *rpc.FunctionCall) (json.RawMessage, error) {
+	params, err := json.Marshal(opts.Params)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	call := *opts
 	call.Type = rpc.FunctionCallType
+	call.Params = params
 
 	data, err := json.Marshal(call)
 	if err != nil {

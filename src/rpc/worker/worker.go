@@ -3,6 +3,7 @@ package worker
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"os"
@@ -14,17 +15,6 @@ import (
 
 	"github.com/illikainen/orch/src/rpc"
 )
-
-var workers = map[string]func([]byte) (any, error){}
-
-func Register(name string, fun func(data []byte) (any, error)) error {
-	if _, ok := workers[name]; ok {
-		return errors.Errorf("%s is already registered", name)
-	}
-
-	workers[name] = fun
-	return nil
-}
 
 type Worker struct {
 	reader io.Reader
@@ -99,8 +89,8 @@ func (w *Worker) Start() error {
 					continue
 				}
 
-				fun, ok := workers[fc.Function]
-				if !ok {
+				executor, err := Lookup(fc.Function)
+				if err != nil {
 					err := w.Return(&rpc.Return{
 						Error: errors.Errorf("invalid function: %s", fc.Function),
 					})
@@ -110,7 +100,40 @@ func (w *Worker) Start() error {
 					continue
 				}
 
-				rv, err := fun(fc.Data)
+				params64, ok := fc.Params.(string)
+				if !ok {
+					err := w.Return(&rpc.Return{
+						Error: errors.Errorf("bad param type: %T (%s)", fc.Params, fc.Params),
+					})
+					if err != nil {
+						return err
+					}
+					continue
+				}
+
+				params, err := base64.StdEncoding.DecodeString(params64)
+				if err != nil {
+					err := w.Return(&rpc.Return{
+						Error: errors.Errorf("bad params: %s: %v", params64, err),
+					})
+					if err != nil {
+						return err
+					}
+					continue
+				}
+
+				err = json.Unmarshal(params, executor)
+				if err != nil {
+					err := w.Return(&rpc.Return{
+						Error: errors.Errorf("bad params: %s", params),
+					})
+					if err != nil {
+						return err
+					}
+					continue
+				}
+
+				rv, err := executor.Execute()
 				if err != nil {
 					e := w.Return(&rpc.Return{
 						Error: err,

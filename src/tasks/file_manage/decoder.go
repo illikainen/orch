@@ -3,7 +3,6 @@ package file_manage // revive:disable-line:var-naming
 
 import (
 	"encoding/base64"
-	"os"
 
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/tasks/decode"
@@ -22,23 +21,15 @@ func init() {
 	fn.Must(decode.Register("file_manage", NewDecoder))
 }
 
+type Decoder struct {
+	Task
+}
+
 func NewDecoder() (decode.Decoder, error) {
-	return &Task{}, nil
+	return &Decoder{}, nil
 }
 
-type Task struct {
-	Condition     bool            `json:"condition"`
-	Src           string          `json:"src"`
-	Dst           string          `json:"dst"`
-	Content       string          `json:"content"`
-	FileMode      os.FileMode     `json:"file_mode"`
-	DirMode       os.FileMode     `json:"dir_mode"`
-	IgnoreDirMode bool            `json:"ignore_dir_mode"`
-	Config        *configs.Config `json:"config"`
-	value         cty.Value
-}
-
-func (t *Task) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
+func (t *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
 	value, diags := hcldec.Decode(
 		body,
 		&hcldec.ObjectSpec{
@@ -115,17 +106,17 @@ func (t *Task) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Confi
 	return nil
 }
 
-func (t *Task) Validate() error {
+func (t *Decoder) Validate() error {
 	if t.Src == "" && t.Content == "" {
 		return errors.Errorf("Missing required argument; Either \"src\" or \"content\" is required.")
 	}
 	return nil
 }
 
-func (t *Task) Include() bool {
+func (t *Decoder) Include() bool {
 	return t.Condition
 }
 
-func (t *Task) Value() cty.Value {
+func (t *Decoder) Value() cty.Value {
 	return t.value
 }

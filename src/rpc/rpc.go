@@ -29,7 +29,7 @@ type Control struct {
 type FunctionCall struct {
 	Type     int
 	Function string
-	Data     json.RawMessage
+	Params   any
 }
 
 type Log struct {

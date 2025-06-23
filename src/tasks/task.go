@@ -79,14 +79,9 @@ func (t *Task) Include() bool {
 }
 
 func (t *Task) Apply(ctrl *controller.Controller) (*outputs.Output, error) {
-	data, err := json.Marshal(t.decoder)
-	if err != nil {
-		return nil, err
-	}
-
 	rv, err := ctrl.Call(&rpc.FunctionCall{
 		Function: t.Type,
-		Data:     data,
+		Params:   t.decoder,
 	})
 	if err != nil {
 		return nil, err
