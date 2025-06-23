@@ -5,9 +5,9 @@ go 1.19
 require (
 	github.com/fatih/color v1.15.0
 	github.com/hashicorp/hcl/v2 v2.19.1
-	github.com/illikainen/go-cryptor v0.0.0-20250615151418-48d21396530a
-	github.com/illikainen/go-netutils v0.0.0-20250615150800-4d7276f21c57
-	github.com/illikainen/go-utils v0.0.0-20250615145810-04ff8920a231
+	github.com/illikainen/go-cryptor v0.0.0-20250623134026-b11812c5c300
+	github.com/illikainen/go-netutils v0.0.0-20250623133943-f5113e6adc13
+	github.com/illikainen/go-utils v0.0.0-20250623134431-af079b508595
 	github.com/mattn/go-isatty v0.0.17
 	github.com/pkg/errors v0.9.1
 	github.com/sergi/go-diff v1.2.0
