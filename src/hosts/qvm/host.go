@@ -11,6 +11,7 @@ import (
 
 	"github.com/illikainen/orch/src/embeds"
 	"github.com/illikainen/orch/src/metadata"
+	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/rpc/controller"
 	"github.com/illikainen/orch/src/utils"
 
@@ -110,7 +111,7 @@ type sysinfo struct {
 }
 
 func (h *Host) getSysInfo() (*sysinfo, error) {
-	uname, err := Exec(&ExecOptions{
+	uname, err := qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"uname", "-s", "-m"},
 		Become:  h.Become,
@@ -129,7 +130,7 @@ func (h *Host) getSysInfo() (*sysinfo, error) {
 		arch = "amd64"
 	}
 
-	printenv, err := Exec(&ExecOptions{
+	printenv, err := qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"printenv", "HOME"},
 		Become:  h.Become,
@@ -176,7 +177,7 @@ func (h *Host) UploadBinary() (err error) {
 	cksum := hex.EncodeToString(hsh.Sum(nil))
 	log.Tracef("%s: %s: sha256=%s", h.Hostname, name, cksum)
 
-	out, err := Exec(&ExecOptions{
+	out, err := qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"sha256sum", "--", h.bin},
 		Become:  h.Become,
@@ -194,7 +195,7 @@ func (h *Host) UploadBinary() (err error) {
 	}
 
 	log.Infof("%s: uploading %s to %s", h.Hostname, name, h.bin)
-	_, err = Exec(&ExecOptions{
+	_, err = qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"mkdir -p -- " + filepath.Dir(h.bin)},
 		Become:  h.Become,
@@ -203,7 +204,7 @@ func (h *Host) UploadBinary() (err error) {
 		return err
 	}
 
-	_, err = Exec(&ExecOptions{
+	_, err = qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"tee -- " + h.bin},
 		Become:  h.Become,
@@ -213,7 +214,7 @@ func (h *Host) UploadBinary() (err error) {
 		return err
 	}
 
-	_, err = Exec(&ExecOptions{
+	_, err = qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"chmod", "u+x", "--", h.bin},
 		Become:  h.Become,
@@ -226,13 +227,15 @@ func (h *Host) UploadBinary() (err error) {
 }
 
 func (h *Host) Start() (*controller.Controller, error) {
-	args := []string{"/bin/sh", "/usr/bin/qvm-run-vm", "--", h.Hostname}
-	if h.Become != "" {
-		args = append(args, become(h.Become)...)
+	args, err := qubes.Command(&qubes.CommandOptions{
+		Name:    h.Hostname,
+		Command: []string{h.bin, "_rpc"},
+		Become:  h.Become,
+	})
+	if err != nil {
+		return nil, err
 	}
-	args = append(args, h.bin, "_rpc")
 
-	log.Tracef("exec: %s", strings.Join(args, " "))
 	cmd := exec.Command(args[0], args[1:]...) // #nosec G204
 
 	w, err := cmd.StdinPipe()
@@ -245,6 +248,7 @@ func (h *Host) Start() (*controller.Controller, error) {
 		return nil, err
 	}
 
+	log.Tracef("exec: %s", strings.Join(cmd.Args, " "))
 	err = cmd.Start()
 	if err != nil {
 		return nil, err

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/illikainen/orch/src/hosts/qvm"
+	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/tasks/outputs"
 
 	"github.com/illikainen/go-netutils/src/sshx"
@@ -179,7 +179,7 @@ func startSandbox(output outputs.Outputs, opts *Options) error {
 	ro = append(ro, sshRO...)
 	rw = append(rw, sshRW...)
 
-	qvmRO, qvmRW, qvmDev, err := qvm.SandboxPaths()
+	qvmRO, qvmRW, qvmDev, err := qubes.SandboxPaths()
 	if err != nil {
 		return err
 	}
