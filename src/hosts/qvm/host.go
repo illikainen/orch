@@ -119,7 +119,7 @@ func (h *Host) Dial(keep bool) error {
 	if err != nil {
 		return err
 	}
-	log.Debugf("os=%s, arch=%s, home=%s", info.os, info.arch, info.home)
+	log.Debugf("os=%s, arch=%s, home=%s", info.OS, info.Arch, info.home)
 	h.sys = info
 	h.bin = filepath.Join(info.home, ".cache", metadata.Name(), "bin", metadata.Name())
 
@@ -127,13 +127,12 @@ func (h *Host) Dial(keep bool) error {
 }
 
 type sysinfo struct {
-	os   string
-	arch string
+	*utils.Uname
 	home string
 }
 
 func (h *Host) getSysInfo() (*sysinfo, error) {
-	uname, err := qubes.Exec(&qubes.ExecOptions{
+	unameOut, err := qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"uname", "-s", "-m"},
 		Become:  h.Become,
@@ -142,17 +141,12 @@ func (h *Host) getSysInfo() (*sysinfo, error) {
 		return nil, err
 	}
 
-	elts := strings.Split(strings.TrimRight(string(uname.Stdout), "\n"), " ")
-	if len(elts) != 2 {
-		return nil, errors.Errorf("invalid output: %s", uname.Stdout)
+	uname, err := utils.ParseUname(string(unameOut.Stdout))
+	if err != nil {
+		return nil, err
 	}
 
-	arch := elts[1]
-	if arch == "x86_64" {
-		arch = "amd64"
-	}
-
-	printenv, err := qubes.Exec(&qubes.ExecOptions{
+	printenvOut, err := qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
 		Command: []string{"printenv", "HOME"},
 		Become:  h.Become,
@@ -160,12 +154,15 @@ func (h *Host) getSysInfo() (*sysinfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	home := strings.TrimRight(string(printenv.Stdout), "\n")
+
+	home, err := utils.ParsePath(string(printenvOut.Stdout))
+	if err != nil {
+		return nil, err
+	}
 
 	return &sysinfo{
-		os:   strings.ToLower(elts[0]),
-		arch: arch,
-		home: home,
+		Uname: uname,
+		home:  home,
 	}, nil
 }
 
@@ -174,7 +171,7 @@ func (h *Host) Name() string {
 }
 
 func (h *Host) UploadBinary() (err error) {
-	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.sys.os, h.sys.arch)
+	name := fmt.Sprintf("%s_%s_%s", metadata.Name(), h.sys.OS, h.sys.Arch)
 	f, err := embeds.OpenBin(name)
 	if err != nil {
 		return err
@@ -205,12 +202,12 @@ func (h *Host) UploadBinary() (err error) {
 		Become:  h.Become,
 	})
 	if err == nil {
-		elts := strings.Split(string(out.Stdout), " ")
-		if len(elts) != 3 {
-			return errors.Errorf("unexpected output length")
+		oldCksum, err := utils.ParseSHA256(string(out.Stdout))
+		if err != nil {
+			return err
 		}
 
-		if elts[0] == cksum {
+		if oldCksum == cksum {
 			log.Debugf("%s: using cached %s", h.Hostname, h.bin)
 			return nil
 		}
