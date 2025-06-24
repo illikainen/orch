@@ -91,7 +91,7 @@ func (h *Host) Value() cty.Value {
 	return h.value
 }
 
-func (h *Host) Dial() error {
+func (h *Host) Dial(keep bool) error {
 	log.Debugf("qvm: connecting to %s", h.Hostname)
 
 	dom0, err := qubes.IsDom0()
@@ -111,7 +111,7 @@ func (h *Host) Dial() error {
 				return err
 			}
 
-			h.shutdown = true
+			h.shutdown = !keep
 		}
 	}
 

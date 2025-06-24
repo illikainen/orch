@@ -45,6 +45,7 @@ type Options struct {
 	Path         string
 	Config       *configs.Config
 	Filter       Filter
+	NoShutdown   bool
 	Sandbox      sandbox.Sandbox
 	DryRun       bool
 	AllowMissing bool
@@ -266,7 +267,7 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 		return nil, err
 	}
 
-	err = host.Connector.Dial()
+	err = host.Connector.Dial(b.opts.NoShutdown)
 	if err != nil {
 		return nil, err
 	}

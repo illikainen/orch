@@ -16,10 +16,11 @@ var command = &cobra.Command{
 
 var options struct {
 	*rootcmd.Options
-	file   string
-	hosts  []string
-	tags   []string
-	dryRun bool
+	file       string
+	hosts      []string
+	tags       []string
+	noShutdown bool
+	dryRun     bool
 }
 
 func Command(opts *rootcmd.Options) *cobra.Command {
@@ -40,6 +41,9 @@ func init() {
 	flags.StringSliceVarP(&options.tags, "tags", "t", nil,
 		"Only apply on hosts with any of these tags(s).  May be provided multiple times")
 
+	flags.BoolVarP(&options.noShutdown, "no-shutdown", "n", false,
+		"Prevent shutdown of machines started to apply tasks")
+
 	flags.BoolVarP(&options.dryRun, "dry-run", "d", false, "Show changes without applying them")
 }
 
@@ -53,7 +57,8 @@ func run(cmd *cobra.Command, _ []string) error {
 			Hosts: options.hosts,
 			Tags:  options.tags,
 		},
-		Sandbox: options.Sandbox,
-		DryRun:  options.dryRun,
+		NoShutdown: options.noShutdown,
+		Sandbox:    options.Sandbox,
+		DryRun:     options.dryRun,
 	})
 }

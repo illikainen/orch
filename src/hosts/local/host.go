@@ -93,7 +93,7 @@ func (h *Host) Value() cty.Value {
 	return h.value
 }
 
-func (h *Host) Dial() error {
+func (h *Host) Dial(_ bool) error {
 	log.Debugf("local: connecting to %s", h.Hostname)
 
 	var usr *user.User

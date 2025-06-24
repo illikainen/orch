@@ -18,7 +18,7 @@ type Connector interface {
 	Validate() error
 	Include() bool
 	Value() cty.Value
-	Dial() error
+	Dial(bool) error
 	UploadBinary() error
 	Start() (*controller.Controller, error)
 	Close() error
