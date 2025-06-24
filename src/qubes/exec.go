@@ -3,8 +3,6 @@ package qubes
 import (
 	"io"
 
-	"github.com/illikainen/orch/src/fact"
-
 	"github.com/illikainen/go-utils/src/process"
 )
 
@@ -42,19 +40,14 @@ type CommandOptions struct {
 	Become  string
 }
 
-var facts *fact.OS
-
 func Command(opts *CommandOptions) ([]string, error) {
-	if facts == nil {
-		tmp, err := fact.GatherOSFacts()
-		if err != nil {
-			return nil, err
-		}
-		facts = tmp
+	dom0, err := IsDom0()
+	if err != nil {
+		return nil, err
 	}
 
 	var args []string
-	if facts.Name == "qubes" {
+	if dom0 {
 		args = []string{
 			"/usr/bin/qvm-run",
 			"--no-autostart",

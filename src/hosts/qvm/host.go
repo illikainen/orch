@@ -34,6 +34,7 @@ type Host struct {
 	sys       *sysinfo
 	value     cty.Value
 	cmd       *exec.Cmd
+	shutdown  bool
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
@@ -92,6 +93,27 @@ func (h *Host) Value() cty.Value {
 
 func (h *Host) Dial() error {
 	log.Debugf("qvm: connecting to %s", h.Hostname)
+
+	dom0, err := qubes.IsDom0()
+	if err != nil {
+		return err
+	}
+
+	if dom0 {
+		vm, err := qubes.Find(h.Hostname)
+		if err != nil {
+			return err
+		}
+
+		if vm.State != qubes.RunningState {
+			err := qubes.Start(h.Hostname)
+			if err != nil {
+				return err
+			}
+
+			h.shutdown = true
+		}
+	}
 
 	info, err := h.getSysInfo()
 	if err != nil {
@@ -265,12 +287,18 @@ func (h *Host) Start() (*controller.Controller, error) {
 }
 
 func (h *Host) Close() error {
+	var errs []error
+
 	if h.cmd != nil {
 		log.Debugf("%s: waiting for rpc worker...", h.name)
-		return h.cmd.Wait()
+		errs = append(errs, h.cmd.Wait())
 	}
 
-	return nil
+	if h.shutdown {
+		errs = append(errs, qubes.Shutdown(h.Hostname, true))
+	}
+
+	return errorx.Join(errs...)
 }
 
 func (h *Host) Functions() map[string]function.Function {
