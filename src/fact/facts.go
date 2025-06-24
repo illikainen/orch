@@ -9,6 +9,7 @@ import (
 type Facts struct {
 	Hostname string `cty:"hostname"`
 	OS       *OS    `cty:"os"`
+	IsQVM    bool   `cty:"is_qvm"`
 }
 
 func (f *Facts) Value() (cty.Value, error) {
