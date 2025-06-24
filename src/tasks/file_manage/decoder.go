@@ -58,10 +58,6 @@ func (t *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 				Name: "dir_mode",
 				Type: cty.Number,
 			},
-			"ignore_dir_mode": &hcldec.AttrSpec{
-				Name: "ignore_dir_mode",
-				Type: cty.Bool,
-			},
 		},
 		ctx,
 	)

@@ -10,13 +10,12 @@ import (
 )
 
 type Task struct {
-	Condition     bool            `json:"condition"`
-	Src           string          `json:"src"`
-	Dst           string          `json:"dst"`
-	Content       string          `json:"content"`
-	FileMode      os.FileMode     `json:"file_mode"`
-	DirMode       os.FileMode     `json:"dir_mode"`
-	IgnoreDirMode bool            `json:"ignore_dir_mode"`
-	Config        *configs.Config `json:"config"`
-	value         cty.Value
+	Condition bool            `json:"condition"`
+	Src       string          `json:"src"`
+	Dst       string          `json:"dst"`
+	Content   string          `json:"content"`
+	FileMode  os.FileMode     `json:"file_mode"`
+	DirMode   os.FileMode     `json:"dir_mode"`
+	Config    *configs.Config `json:"config"`
+	value     cty.Value
 }

@@ -34,14 +34,6 @@ func (e *Executor) Execute() (any, error) {
 		return nil, err
 	}
 
-	var permDirChanges []string
-	if !e.IgnoreDirMode {
-		permDirChanges, err = Chmod(filepath.Dir(e.Dst), e.DirMode, e.Config.DryRun)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	fileChanges, err := WriteFile(e.Dst, srcData, e.FileMode, e.Config.DryRun)
 	if err != nil {
 		return nil, err
@@ -53,11 +45,11 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	return &outputs.Output{
-		Changed: dirChanges != nil || fileChanges != nil || permDirChanges != nil || permFileChanges != nil,
+		Changed: dirChanges != nil || fileChanges != nil || permFileChanges != nil,
 		Diff: map[string][]string{
 			"mkdir":       dirChanges,
 			"file":        fileChanges,
-			"permissions": append(permDirChanges, permFileChanges...),
+			"permissions": permFileChanges,
 		},
 	}, nil
 }
