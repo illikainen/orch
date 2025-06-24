@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/illikainen/orch/src/utils"
 
@@ -59,6 +60,12 @@ func Chmod(name string, mode os.FileMode, dryRun bool) ([]string, error) {
 		if !dryRun {
 			err := os.Chmod(name, mode)
 			if err != nil {
+				// Silently ignore EPERM because that suggest
+				// that the path isn't owned by the executing
+				// user.
+				if errors.Is(err, syscall.EPERM) {
+					return nil, nil
+				}
 				return nil, err
 			}
 		}
