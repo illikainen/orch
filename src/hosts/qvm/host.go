@@ -197,7 +197,7 @@ func (h *Host) UploadBinary() (err error) {
 	log.Infof("%s: uploading %s to %s", h.Hostname, name, h.bin)
 	_, err = qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
-		Command: []string{"mkdir -p -- " + filepath.Dir(h.bin)},
+		Command: []string{"mkdir", "-p", "--", filepath.Dir(h.bin)},
 		Become:  h.Become,
 	})
 	if err != nil {
@@ -206,7 +206,7 @@ func (h *Host) UploadBinary() (err error) {
 
 	_, err = qubes.Exec(&qubes.ExecOptions{
 		Name:    h.Hostname,
-		Command: []string{"tee -- " + h.bin},
+		Command: []string{"tee", "--", h.bin},
 		Become:  h.Become,
 		Stdin:   f,
 	})
