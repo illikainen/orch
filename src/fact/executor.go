@@ -3,6 +3,7 @@ package fact
 import (
 	"os"
 
+	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/rpc/worker"
 
 	"github.com/illikainen/go-utils/src/fn"
@@ -29,6 +30,11 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	facts.OS, err = GatherOSFacts()
+	if err != nil {
+		return nil, err
+	}
+
+	facts.IsQVM, err = qubes.IsQVM()
 	if err != nil {
 		return nil, err
 	}
