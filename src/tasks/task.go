@@ -7,6 +7,7 @@ import (
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
 	"github.com/illikainen/orch/src/tasks/decode"
+	_ "github.com/illikainen/orch/src/tasks/dir_manage"  // decoder
 	_ "github.com/illikainen/orch/src/tasks/file_manage" // decoder
 	"github.com/illikainen/orch/src/tasks/outputs"
 
