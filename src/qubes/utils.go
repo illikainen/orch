@@ -1,19 +1,33 @@
 package qubes
 
 import (
-	"github.com/illikainen/orch/src/fact"
+	"github.com/illikainen/go-utils/src/iofs"
 )
 
-var facts *fact.OS
-
 func IsDom0() (bool, error) {
-	if facts == nil {
-		tmp, err := fact.GatherOSFacts()
-		if err != nil {
-			return false, err
-		}
-		facts = tmp
+	dir, err := iofs.Exists("/var/run/qubes")
+	if err != nil {
+		return false, err
 	}
 
-	return facts.Name == "qubes", nil
+	agent, err := iofs.Exists("/var/run/qubes/qrexec-agent")
+	if err != nil {
+		return false, err
+	}
+
+	return dir && !agent, nil
+}
+
+func IsQVM() (bool, error) {
+	dir, err := iofs.Exists("/var/run/qubes")
+	if err != nil {
+		return false, err
+	}
+
+	agent, err := iofs.Exists("/var/run/qubes/qrexec-agent")
+	if err != nil {
+		return false, err
+	}
+
+	return dir && agent, nil
 }
