@@ -14,9 +14,42 @@ import (
 
 func localFunctions() map[string]function.Function {
 	return map[string]function.Function{
-		"oct":   oct(),
-		"print": printer(),
+		"getattr": getattr(),
+		"oct":     oct(),
+		"print":   printer(),
 	}
+}
+
+func getattr() function.Function {
+	return function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "values",
+				Type: cty.Map(cty.DynamicPseudoType),
+			},
+			{
+				Name: "key",
+				Type: cty.String,
+			},
+			{
+				Name: "fallback",
+				Type: cty.DynamicPseudoType,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			values := args[0].AsValueMap()
+			key := args[1].AsString()
+			fallback := args[2]
+
+			value, ok := values[key]
+			if ok {
+				return value, nil
+			}
+
+			return fallback, nil
+		},
+	})
 }
 
 func oct() function.Function {
