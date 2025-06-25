@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Host struct {
@@ -296,8 +295,4 @@ func (h *Host) Close() error {
 	}
 
 	return errorx.Join(errs...)
-}
-
-func (h *Host) Functions() map[string]function.Function {
-	return nil
 }

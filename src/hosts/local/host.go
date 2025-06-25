@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hcldec"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Host struct {
@@ -235,9 +234,5 @@ func (h *Host) Close() error {
 		return h.cmd.Wait()
 	}
 
-	return nil
-}
-
-func (h *Host) Functions() map[string]function.Function {
 	return nil
 }
