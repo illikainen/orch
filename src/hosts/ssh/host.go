@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
+
+	"github.com/kballard/go-shellquote"
 
 	"github.com/illikainen/orch/src/embeds"
 	"github.com/illikainen/orch/src/metadata"
@@ -194,7 +195,7 @@ func (h *Host) UploadBinary() (err error) {
 	log.Tracef("%s: %s: sha256=%s", h.Hostname, name, cksum)
 
 	out, err := h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("sha256sum -- '%s'", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Command: shellquote.Join("sha256sum", "--", h.bin),
 		Become:  h.Become,
 	})
 	if err == nil {
@@ -211,7 +212,7 @@ func (h *Host) UploadBinary() (err error) {
 
 	log.Infof("%s: uploading %s to %s", h.Hostname, name, h.bin)
 	_, err = h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("mkdir -p -- '%s'", strings.ReplaceAll(filepath.Dir(h.bin), "'", "'\\''")),
+		Command: shellquote.Join("mkdir", "-p", "--", filepath.Dir(h.bin)),
 		Become:  h.Become,
 	})
 	if err != nil {
@@ -219,7 +220,7 @@ func (h *Host) UploadBinary() (err error) {
 	}
 
 	_, err = h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("tee -- %s", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Command: shellquote.Join("tee", "--", h.bin),
 		Become:  h.Become,
 		Stdin:   f,
 	})
@@ -228,7 +229,7 @@ func (h *Host) UploadBinary() (err error) {
 	}
 
 	_, err = h.conn.Exec(&sshx.ExecOptions{
-		Command: fmt.Sprintf("chmod +x -- '%s'", strings.ReplaceAll(h.bin, "'", "'\\''")),
+		Command: shellquote.Join("chmod", "+x", "--", h.bin),
 		Become:  h.Become,
 	})
 	if err != nil {
@@ -254,7 +255,7 @@ func (h *Host) Start() (*controller.Controller, error) {
 		return nil, err
 	}
 
-	cmd := fmt.Sprintf("'%s' _rpc", strings.ReplaceAll(h.bin, "'", "'\\''"))
+	cmd := shellquote.Join(h.bin, "_rpc")
 	if h.Become != "" {
 		esc, err := h.conn.Become(h.Become)
 		if err != nil {
