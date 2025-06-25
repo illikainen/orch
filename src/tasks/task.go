@@ -10,6 +10,7 @@ import (
 	_ "github.com/illikainen/orch/src/tasks/dir_manage"  // decoder
 	_ "github.com/illikainen/orch/src/tasks/exec"        // decoder
 	_ "github.com/illikainen/orch/src/tasks/file_manage" // decoder
+	_ "github.com/illikainen/orch/src/tasks/file_remove" // decoder
 	"github.com/illikainen/orch/src/tasks/outputs"
 
 	"github.com/hashicorp/hcl/v2"
