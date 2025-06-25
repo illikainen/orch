@@ -329,6 +329,11 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 				b.output = append(b.output, out)
 				output = append(output, out)
 
+				// This is an ugly workaround to allow referencing ${out.this} in HCL.
+				this := *out
+				this.Host = "this"
+				b.output = append(b.output, &this)
+
 				status := "up-to-date"
 				if out.IsChanged() {
 					status = "changed"
