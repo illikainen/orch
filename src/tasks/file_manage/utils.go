@@ -12,7 +12,6 @@ import (
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/illikainen/go-utils/src/iofs"
-	"github.com/illikainen/go-utils/src/stringx"
 	"github.com/pkg/errors"
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
@@ -109,7 +108,7 @@ func WriteFile(name string, data []byte, mode os.FileMode, dryRun bool) ([]strin
 			}
 		}
 
-		return stringx.SplitLines(diff), nil
+		return []string{fmt.Sprintf("%s: %s", name, diff)}, nil
 	}
 
 	return nil, nil
