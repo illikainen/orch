@@ -12,6 +12,7 @@ import (
 	_ "github.com/illikainen/orch/src/tasks/file_manage" // decoder
 	_ "github.com/illikainen/orch/src/tasks/file_remove" // decoder
 	"github.com/illikainen/orch/src/tasks/outputs"
+	_ "github.com/illikainen/orch/src/tasks/systemd"               // decoder
 	_ "github.com/illikainen/orch/src/tasks/systemd_daemon_reload" // decoder
 
 	"github.com/hashicorp/hcl/v2"
