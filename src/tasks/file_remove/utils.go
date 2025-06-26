@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/illikainen/go-utils/src/iofs"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +19,7 @@ func Remove(name string, dryRun bool) ([]string, error) {
 	}
 
 	if !dryRun {
-		err = os.Remove(name)
+		err := iofs.Remove(name)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
