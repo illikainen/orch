@@ -6,6 +6,7 @@ import (
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
+	_ "github.com/illikainen/orch/src/tasks/cert_unbundle" // decoder
 	"github.com/illikainen/orch/src/tasks/decode"
 	_ "github.com/illikainen/orch/src/tasks/dir_manage"  // decoder
 	_ "github.com/illikainen/orch/src/tasks/exec"        // decoder
