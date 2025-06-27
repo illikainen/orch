@@ -66,7 +66,7 @@ func MergeCtyValues(a map[string]cty.Value, b map[string]cty.Value) (map[string]
 	return result, nil
 }
 
-func JoinCtyPath[T *hclsyntax.Body | string](base T, sub string) (string, error) {
+func CtyBaseDir[T *hclsyntax.Body | string](base T) (string, error) {
 	var basedir string
 
 	switch b := any(base).(type) {
@@ -80,9 +80,17 @@ func JoinCtyPath[T *hclsyntax.Body | string](base T, sub string) (string, error)
 
 	basedir, err := filepath.Abs(basedir)
 	if err != nil {
+		return "", errors.WithStack(err)
+	}
+
+	return filepath.Clean(basedir), nil
+}
+
+func JoinCtyPath[T *hclsyntax.Body | string](base T, sub string) (string, error) {
+	basedir, err := CtyBaseDir(base)
+	if err != nil {
 		return "", err
 	}
-	basedir = filepath.Clean(basedir)
 
 	path, err := filepath.Abs(filepath.Join(basedir, sub))
 	if err != nil {
