@@ -317,10 +317,6 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 					return nil, err
 				}
 
-				if !task.Include() {
-					continue
-				}
-
 				out, err := task.Apply(ctrl)
 				if err != nil {
 					return nil, errors.Errorf("%s: %s.%s: %s", host.Name, role.Name, task.Name, err)

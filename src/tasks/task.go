@@ -86,19 +86,23 @@ func (t *Task) Include() bool {
 }
 
 func (t *Task) Apply(ctrl *controller.Controller) (*outputs.Output, error) {
-	rv, err := ctrl.Call(&rpc.FunctionCall{
-		Function: t.Type,
-		Params:   t.decoder,
-	})
-	if err != nil {
-		return nil, err
+	var output outputs.Output
+
+	if t.Include() {
+		rv, err := ctrl.Call(&rpc.FunctionCall{
+			Function: t.Type,
+			Params:   t.decoder,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(rv, &output)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	var output outputs.Output
-	err = json.Unmarshal(rv, &output)
-	if err != nil {
-		return nil, err
-	}
 	output.Type = t.Type
 	output.Name = t.Name
 	output.Host = t.Host
