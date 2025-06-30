@@ -109,6 +109,7 @@ func (t *Task) Apply(ctrl *controller.Controller) (*outputs.Output, error) {
 	output.Name = t.Name
 	output.Host = t.Host
 	output.Role = t.Role
+	output.Changed = output.Status == outputs.StatusChanged
 
 	return &output, nil
 }

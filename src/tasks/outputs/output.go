@@ -9,18 +9,21 @@ import (
 	"github.com/illikainen/orch/src/utils"
 )
 
+const (
+	StatusIndeterminate = iota
+	StatusUnchanged
+	StatusChanged
+)
+
 type Output struct {
 	Type    string              `json:"type"`
 	Host    string              `json:"host"`
 	Role    string              `json:"role"`
 	Name    string              `json:"name"`
+	Status  int                 `json:"status"  cty:"status"`
 	Changed bool                `json:"changed" cty:"changed"`
 	Diff    map[string][]string `json:"diff"    cty:"diff"`
 	Error   string              `json:"error"`
-}
-
-func (o *Output) IsChanged() bool {
-	return o.Changed
 }
 
 func (o *Output) Differences() map[string][]string {

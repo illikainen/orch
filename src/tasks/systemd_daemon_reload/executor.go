@@ -32,6 +32,6 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	return &outputs.Output{
-		Changed: true,
+		Status: outputs.StatusChanged,
 	}, nil
 }

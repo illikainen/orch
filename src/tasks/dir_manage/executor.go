@@ -55,7 +55,11 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	return &outputs.Output{
-		Changed: dirChanges != nil || fileChanges != nil || permChanges != nil,
+		Status: fn.Ternary(
+			dirChanges == nil && fileChanges == nil && permChanges == nil,
+			outputs.StatusUnchanged,
+			outputs.StatusChanged,
+		),
 		Diff: map[string][]string{
 			"mkdir":       dirChanges,
 			"file":        fileChanges,

@@ -331,7 +331,7 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 				b.output = append(b.output, &this)
 
 				status := "up-to-date"
-				if out.IsChanged() {
+				if out.Status == outputs.StatusChanged {
 					status = "changed"
 				}
 				log.Infof("%s: %s.%s: %s", host.Name, role.Name, task.Name, status)

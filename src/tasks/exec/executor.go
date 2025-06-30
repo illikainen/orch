@@ -54,7 +54,7 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	return &outputs.Output{
-		Changed: true,
-		Diff:    diff,
+		Status: outputs.StatusChanged,
+		Diff:   diff,
 	}, nil
 }

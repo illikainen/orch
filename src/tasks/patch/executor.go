@@ -35,7 +35,7 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	return &outputs.Output{
-		Changed: changes != nil,
+		Status: fn.Ternary(changes == nil, outputs.StatusUnchanged, outputs.StatusChanged),
 		Diff: map[string][]string{
 			"patch": changes,
 		},
