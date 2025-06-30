@@ -335,7 +335,7 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 					status = "changed"
 				}
 				log.Infof("%s: %s.%s: %s", host.Name, role.Name, task.Name, status)
-				for typ, diffs := range out.Differences() {
+				for typ, diffs := range out.Diff {
 					if len(diffs) > 0 {
 						log.Infof("    %s\n    %s\n", typ, strings.Repeat("-", len(typ)))
 

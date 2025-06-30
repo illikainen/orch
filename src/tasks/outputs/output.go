@@ -26,10 +26,6 @@ type Output struct {
 	Error   string              `json:"error"`
 }
 
-func (o *Output) Differences() map[string][]string {
-	return o.Diff
-}
-
 func (o *Output) Value() (cty.Value, error) {
 	return utils.ToCtyValue(o)
 }
