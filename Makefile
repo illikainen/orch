@@ -46,8 +46,6 @@ build:
 	@$(GOFER) build -o $(OUTPUT)
 
 release:
-	@$(SANDBOX) go clean
-	@$(SANDBOX) go clean -cache
 	@$(SANDBOX) rm -rfv $(OUTPUT_RELEASE)
 	@$(GOFER) build -o $(OUTPUT_RELEASE) --release \
 		-t linux:amd64 \
