@@ -66,7 +66,7 @@ func (e *Executor) Execute() (any, error) {
 	}
 
 	if changes != nil && !e.Config.DryRun {
-		f, err := os.OpenFile(e.Path, os.O_WRONLY, 0)
+		f, err := os.OpenFile(e.Path, os.O_WRONLY|os.O_TRUNC, 0)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
