@@ -199,3 +199,40 @@ func parseFieldTags(field reflect.StructField) *tags {
 
 	return t
 }
+
+func Dependencies(body hcl.Body, schema *BodySchema) ([]string, error) {
+	content, diags := body.Content(schema.Schema)
+	if diags != nil {
+		return nil, diags
+	}
+
+	var deps []string
+
+	for _, attr := range content.Attributes {
+		for _, v := range attr.Expr.Variables() {
+			if len(v) >= 2 {
+				if root, ok := v[0].(hcl.TraverseRoot); ok && root.Name == "out" {
+					if host, ok := v[1].(hcl.TraverseAttr); ok && host.Name != "this" {
+						deps = append(deps, host.Name)
+					}
+				}
+			}
+		}
+	}
+
+	for _, block := range content.Blocks {
+		blockSchema, ok := schema.Blocks[block.Type]
+		if !ok {
+			return nil, errors.Errorf("%s: unknown block type", block.Type)
+		}
+
+		blockDeps, err := Dependencies(block.Body, blockSchema)
+		if err != nil {
+			return nil, err
+		}
+
+		deps = append(deps, blockDeps...)
+	}
+
+	return deps, nil
+}
