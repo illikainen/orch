@@ -4,12 +4,81 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
 )
+
+type BodySchema struct {
+	Schema *hcl.BodySchema
+	Blocks map[string]*BodySchema
+}
+
+func GenerateBodySchema(v any) (*BodySchema, error) {
+	spec, err := GenerateObjectSpec(v)
+	if err != nil {
+		return nil, err
+	}
+
+	body := &BodySchema{
+		Schema: &hcl.BodySchema{},
+		Blocks: map[string]*BodySchema{},
+	}
+
+	for name, spec := range *spec {
+		if attr, ok := spec.(*hcldec.AttrSpec); ok {
+			body.Schema.Attributes = append(body.Schema.Attributes, hcl.AttributeSchema{
+				Name:     name,
+				Required: attr.Required,
+			})
+		} else if _, ok := spec.(*hcldec.BlockSpec); ok {
+			body.Schema.Blocks = append(body.Schema.Blocks, hcl.BlockHeaderSchema{
+				Type: name,
+			})
+
+			field, ok := fieldByTagName(v, name)
+			if !ok {
+				return nil, errors.Errorf("%s: unknown field", name)
+			}
+
+			blockBody, err := GenerateBodySchema(reflect.New(field.Type).Interface())
+			if err != nil {
+				return nil, err
+			}
+			body.Blocks[name] = blockBody
+		}
+	}
+
+	return body, nil
+}
+
+func fieldByTagName(v any, name string) (reflect.StructField, bool) {
+	typ := reflect.TypeOf(v)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		tags := parseFieldTags(field)
+		if tags.Name == name {
+			return field, true
+		}
+
+		if field.Type.Kind() == reflect.Struct && field.Anonymous {
+			f, ok := fieldByTagName(reflect.New(field.Type).Interface(), name)
+			if ok {
+				return f, ok
+			}
+		}
+	}
+
+	return reflect.StructField{}, false
+}
 
 func GenerateObjectSpec(v any) (*hcldec.ObjectSpec, error) {
 	spec := hcldec.ObjectSpec{}
