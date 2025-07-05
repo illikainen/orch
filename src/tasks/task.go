@@ -3,6 +3,9 @@ package tasks
 import (
 	"encoding/json"
 
+	"github.com/pkg/errors"
+
+	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
@@ -37,22 +40,21 @@ type Task struct {
 }
 
 func (t *Task) PartialDecode() error {
-	attrs, diags := t.Body.JustAttributes()
-	if diags != nil {
-		return diags
+	decoder, err := decode.Lookup(t.Type)
+	if err != nil {
+		return err
 	}
 
-	for _, attr := range attrs {
-		for _, v := range attr.Expr.Variables() {
-			if len(v) >= 2 {
-				if root, ok := v[0].(hcl.TraverseRoot); ok && root.Name == "out" {
-					if host, ok := v[1].(hcl.TraverseAttr); ok && host.Name != "this" {
-						t.Dependencies = append(t.Dependencies, host.Name)
-					}
-				}
-			}
-		}
+	schema, err := codec.GenerateBodySchema(decoder)
+	if err != nil {
+		return errors.Wrap(err, t.Type)
 	}
+
+	deps, err := codec.Dependencies(t.Body, schema)
+	if err != nil {
+		return err
+	}
+	t.Dependencies = deps
 
 	return nil
 }
