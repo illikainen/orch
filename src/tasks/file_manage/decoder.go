@@ -29,7 +29,7 @@ func NewDecoder() (decode.Decoder, error) {
 	return &Decoder{}, nil
 }
 
-func (t *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
+func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
 	value, diags := hcldec.Decode(
 		body,
 		&hcldec.ObjectSpec{
@@ -65,19 +65,19 @@ func (t *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		return diags
 	}
 
-	err := utils.FromCtyValue(value, t)
+	err := utils.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}
 
 	if value.GetAttr("condition").IsNull() {
-		t.Condition = true
+		d.Condition = true
 	}
 
-	if t.Content != "" {
-		t.Content = base64.StdEncoding.EncodeToString([]byte(t.Content))
+	if d.Content != "" {
+		d.Content = base64.StdEncoding.EncodeToString([]byte(d.Content))
 	} else {
-		src, err := utils.JoinCtyPath(body.(*hclsyntax.Body), t.Src)
+		src, err := utils.JoinCtyPath(body.(*hclsyntax.Body), d.Src)
 		if err != nil {
 			return err
 		}
@@ -86,33 +86,33 @@ func (t *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		if err != nil {
 			return err
 		}
-		t.Content = base64.StdEncoding.EncodeToString(data)
+		d.Content = base64.StdEncoding.EncodeToString(data)
 	}
 
-	if int(t.FileMode) == 0 {
-		t.FileMode = config.DefaultFileMode
+	if int(d.FileMode) == 0 {
+		d.FileMode = config.DefaultFileMode
 	}
 
-	if int(t.DirMode) == 0 {
-		t.DirMode = config.DefaultDirMode
+	if int(d.DirMode) == 0 {
+		d.DirMode = config.DefaultDirMode
 	}
 
-	t.Config = config
-	t.value = value
+	d.Config = config
+	d.value = value
 	return nil
 }
 
-func (t *Decoder) Validate() error {
-	if t.Src == "" && t.Content == "" {
+func (d *Decoder) Validate() error {
+	if d.Src == "" && d.Content == "" {
 		return errors.Errorf("Missing required argument; Either \"src\" or \"content\" is required.")
 	}
 	return nil
 }
 
-func (t *Decoder) Include() bool {
-	return t.Condition
+func (d *Decoder) Include() bool {
+	return d.Condition
 }
 
-func (t *Decoder) Value() cty.Value {
-	return t.value
+func (d *Decoder) Value() cty.Value {
+	return d.value
 }
