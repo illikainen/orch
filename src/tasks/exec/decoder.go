@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/tasks/decode"
 	"github.com/illikainen/orch/src/utils"
@@ -24,30 +25,17 @@ func NewDecoder() (decode.Decoder, error) {
 }
 
 func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
-	value, diags := hcldec.Decode(
-		body,
-		&hcldec.ObjectSpec{
-			"condition": &hcldec.AttrSpec{
-				Name: "condition",
-				Type: cty.Bool,
-			},
-			"cmd": &hcldec.AttrSpec{
-				Name:     "cmd",
-				Type:     cty.String,
-				Required: true,
-			},
-			"shell": &hcldec.AttrSpec{
-				Name: "shell",
-				Type: cty.Bool,
-			},
-		},
-		ctx,
-	)
+	spec, err := codec.GenerateObjectSpec(d.Task)
+	if err != nil {
+		return err
+	}
+
+	value, diags := hcldec.Decode(body, spec, ctx)
 	if diags != nil {
 		return diags
 	}
 
-	err := utils.FromCtyValue(value, d)
+	err = utils.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}

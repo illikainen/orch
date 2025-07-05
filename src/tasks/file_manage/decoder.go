@@ -4,6 +4,7 @@ package file_manage // revive:disable-line:var-naming
 import (
 	"encoding/base64"
 
+	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/tasks/decode"
 	"github.com/illikainen/orch/src/utils"
@@ -30,42 +31,17 @@ func NewDecoder() (decode.Decoder, error) {
 }
 
 func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
-	value, diags := hcldec.Decode(
-		body,
-		&hcldec.ObjectSpec{
-			"condition": &hcldec.AttrSpec{
-				Name: "condition",
-				Type: cty.Bool,
-			},
-			"src": &hcldec.AttrSpec{
-				Name: "src",
-				Type: cty.String,
-			},
-			"dst": &hcldec.AttrSpec{
-				Name:     "dst",
-				Type:     cty.String,
-				Required: true,
-			},
-			"content": &hcldec.AttrSpec{
-				Name: "content",
-				Type: cty.String,
-			},
-			"file_mode": &hcldec.AttrSpec{
-				Name: "file_mode",
-				Type: cty.Number,
-			},
-			"dir_mode": &hcldec.AttrSpec{
-				Name: "dir_mode",
-				Type: cty.Number,
-			},
-		},
-		ctx,
-	)
+	spec, err := codec.GenerateObjectSpec(d.Task)
+	if err != nil {
+		return err
+	}
+
+	value, diags := hcldec.Decode(body, spec, ctx)
 	if diags != nil {
 		return diags
 	}
 
-	err := utils.FromCtyValue(value, d)
+	err = utils.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}
