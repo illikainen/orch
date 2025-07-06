@@ -20,6 +20,7 @@ import (
 	_ "github.com/illikainen/orch/src/tasks/patch"                 // decoder
 	_ "github.com/illikainen/orch/src/tasks/qvm_create"            // decoder
 	_ "github.com/illikainen/orch/src/tasks/qvm_prefs"             // decoder
+	_ "github.com/illikainen/orch/src/tasks/qvm_service"           // decoder
 	_ "github.com/illikainen/orch/src/tasks/symlink"               // decoder
 	_ "github.com/illikainen/orch/src/tasks/systemd"               // decoder
 	_ "github.com/illikainen/orch/src/tasks/systemd_daemon_reload" // decoder
