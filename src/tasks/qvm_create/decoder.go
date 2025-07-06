@@ -36,7 +36,15 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 	if diags != nil {
 		return diags
 	}
-	value = qvm_prefs.HandleDefaultPreferences(value)
+
+	values := value.AsValueMap()
+	if prefs, ok := values["prefs"]; ok {
+		values["prefs"] = qvm_prefs.HandleDefaultPreferences(prefs)
+	}
+	if services, ok := values["services"]; ok {
+		values["services"] = qvm_prefs.HandleDefaultPreferences(services)
+	}
+	value = cty.ObjectVal(values)
 
 	err = utils.FromCtyValue(value, d)
 	if err != nil {
