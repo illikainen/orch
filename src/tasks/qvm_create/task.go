@@ -13,6 +13,7 @@ type Task struct {
 	Name        string            `json:"name"      hcl:"name"`
 	Label       string            `json:"label"     hcl:"label"`
 	Preferences qubes.Preferences `json:"prefs"     hcl:"prefs"`
+	Services    qubes.Services    `json:"services"  hcl:"services,optional"`
 	Config      *configs.Config   `json:"config"    hcl:"-"`
 	value       cty.Value
 }
