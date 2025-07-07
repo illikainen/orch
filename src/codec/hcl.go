@@ -49,6 +49,21 @@ func GenerateBodySchema(v any) (*BodySchema, error) {
 				return nil, err
 			}
 			body.Blocks[name] = blockBody
+		} else if _, ok := spec.(*hcldec.BlockListSpec); ok {
+			body.Schema.Blocks = append(body.Schema.Blocks, hcl.BlockHeaderSchema{
+				Type: name,
+			})
+
+			field, ok := fieldByTagName(v, name)
+			if !ok {
+				return nil, errors.Errorf("%s: unknown field", name)
+			}
+
+			blockBody, err := GenerateBodySchema(reflect.New(field.Type.Elem()).Interface())
+			if err != nil {
+				return nil, err
+			}
+			body.Blocks[name] = blockBody
 		}
 	}
 
@@ -157,6 +172,17 @@ func GenerateObjectSpec(v any) (*hcldec.ObjectSpec, error) {
 					Nested:   inner,
 					Required: tags.Required,
 				}
+			}
+		} else if kind == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+			inner, err := GenerateObjectSpec(reflect.New(field.Type.Elem()).Interface())
+			if err != nil {
+				return nil, err
+			}
+
+			spec[tags.Name] = &hcldec.BlockListSpec{
+				TypeName: tags.Name,
+				Nested:   inner,
+				MinItems: fn.Ternary(tags.Required, 1, 0),
 			}
 		} else {
 			return nil, errors.Errorf("%s: unsupported type: %s", tags.Name, kind)
