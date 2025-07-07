@@ -70,6 +70,7 @@ func (e *Executor) Execute() (any, error) {
 
 	var prefChanges []string
 	var svcChanges []string
+	var fwChanges []string
 
 	if exists || !e.Config.DryRun {
 		prefStatus, tmp, err := qvm_prefs.ApplyPreferences(e.Name, &e.Preferences, e.Config.DryRun)
@@ -89,6 +90,15 @@ func (e *Executor) Execute() (any, error) {
 			status = svcStatus
 		}
 		svcChanges = tmp
+
+		fwStatus, tmp, err := e.Firewall.Apply(e.Name, e.Config.DryRun)
+		if err != nil {
+			return nil, err
+		}
+		if fwStatus == outputs.StatusUnchanged {
+			status = fwStatus
+		}
+		fwChanges = tmp
 	}
 
 	return &outputs.Output{
@@ -97,6 +107,7 @@ func (e *Executor) Execute() (any, error) {
 			"vm":          changes,
 			"preferences": prefChanges,
 			"services":    svcChanges,
+			"firewall":    fwChanges,
 		},
 	}, nil
 }
