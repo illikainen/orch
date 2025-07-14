@@ -1,5 +1,4 @@
-//lint:ignore ST1003 readability
-package qvm_create // revive:disable-line:var-naming
+package qvm
 
 import (
 	"github.com/illikainen/orch/src/codec"
@@ -15,7 +14,7 @@ import (
 )
 
 func init() {
-	fn.Must(decode.Register("qvm_create", NewDecoder))
+	fn.Must(decode.Register("qvm", NewDecoder))
 }
 
 type Decoder struct {

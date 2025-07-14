@@ -1,5 +1,4 @@
-//lint:ignore ST1003 readability
-package qvm_create // revive:disable-line:var-naming
+package qvm
 
 import (
 	"fmt"
@@ -15,7 +14,7 @@ import (
 )
 
 func init() {
-	fn.Must(worker.Register("qvm_create", NewExecutor))
+	fn.Must(worker.Register("qvm", NewExecutor))
 }
 
 type Executor struct {
