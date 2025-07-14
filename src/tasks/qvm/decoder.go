@@ -3,8 +3,8 @@ package qvm
 import (
 	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
+	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/tasks/decode"
-	"github.com/illikainen/orch/src/tasks/qvm_prefs"
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
@@ -38,13 +38,13 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 
 	values := value.AsValueMap()
 	if prefs, ok := values["prefs"]; ok {
-		values["prefs"] = qvm_prefs.HandleDefaultPreferences(prefs)
+		values["prefs"] = qubes.HandleDefaultPreferences(prefs)
 	}
 	if services, ok := values["services"]; ok {
-		values["services"] = qvm_prefs.HandleDefaultPreferences(services)
+		values["services"] = qubes.HandleDefaultPreferences(services)
 	}
 	if features, ok := values["features"]; ok {
-		values["features"] = qvm_prefs.HandleDefaultPreferences(features)
+		values["features"] = qubes.HandleDefaultPreferences(features)
 	}
 	value = cty.ObjectVal(values)
 

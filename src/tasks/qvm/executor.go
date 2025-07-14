@@ -6,7 +6,6 @@ import (
 	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/rpc/worker"
 	"github.com/illikainen/orch/src/tasks/outputs"
-	"github.com/illikainen/orch/src/tasks/qvm_prefs"
 
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/process"
@@ -72,7 +71,7 @@ func (e *Executor) Execute() (any, error) {
 	var featChanges []string
 
 	if exists || !e.Config.DryRun {
-		prefStatus, tmp, err := qvm_prefs.ApplyPreferences(e.Name, &e.Preferences, e.Config.DryRun)
+		prefStatus, tmp, err := e.Preferences.Apply(e.Name, e.Config.DryRun)
 		if err != nil {
 			return nil, err
 		}

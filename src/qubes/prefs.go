@@ -4,13 +4,17 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 
 	"github.com/illikainen/go-utils/src/errorx"
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/iofs"
 	"github.com/illikainen/go-utils/src/process"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/illikainen/orch/src/codec"
+	"github.com/illikainen/orch/src/tasks/outputs"
 )
 
 type Preferences struct { // revive:disable:line-length-limit
@@ -69,22 +73,33 @@ type PreferenceChange struct {
 //go:embed prefs.py
 var pythonPrefs []byte
 
-func (p *Preferences) Apply(name string, dryRun bool) (changes []PreferenceChange, err error) {
+func (p *Preferences) Apply(name string, dryRun bool) (status int, changes []string, err error) {
+	if dryRun {
+		exists, err := Check(name)
+		if err != nil {
+			return 0, nil, err
+		}
+
+		if !exists {
+			return outputs.StatusIndeterminate, nil, nil
+		}
+	}
+
 	data, err := json.Marshal(p)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	tmp, tmpClean, err := iofs.MkdirTemp()
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 	defer errorx.Defer(tmpClean, &err)
 
 	prefs := filepath.Join(tmp, "prefs.py")
 	err = iofs.WriteFile(prefs, bytes.NewReader(pythonPrefs))
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	cmd := []string{"python3", prefs, "set"}
@@ -98,13 +113,52 @@ func (p *Preferences) Apply(name string, dryRun bool) (changes []PreferenceChang
 		Stdin:   bytes.NewReader(data),
 	})
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
+	var prefChanges []PreferenceChange
 	err = json.Unmarshal(proc.Stdout, &changes)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
-	return changes, err
+	for _, change := range prefChanges {
+		oldDefault := ""
+		if change.OldIsDefault {
+			oldDefault = " (default)"
+		}
+
+		newDefault := ""
+		if change.NewIsDefault {
+			newDefault = " (default)"
+		}
+
+		changes = append(changes, fmt.Sprintf("%s: %s%s -> %s%s", change.Property,
+			change.OldValue, oldDefault, change.NewValue, newDefault))
+	}
+
+	return fn.Ternary(changes == nil, outputs.StatusUnchanged, outputs.StatusChanged), changes, err
+}
+
+func HandleDefaultPreferences(v cty.Value) cty.Value {
+	if !v.IsKnown() || v.IsNull() {
+		return v
+	}
+
+	values := map[string]cty.Value{}
+	var defaults []cty.Value
+
+	for key, value := range v.AsValueMap() {
+		if value.Type() == cty.String && !value.IsNull() && value.AsString() == "*default*" {
+			defaults = append(defaults, cty.StringVal(key))
+			values[key] = cty.NilVal
+		} else {
+			values[key] = value
+		}
+	}
+
+	if defaults != nil {
+		values["defaults"] = cty.ListVal(defaults)
+	}
+	return cty.ObjectVal(values)
 }
