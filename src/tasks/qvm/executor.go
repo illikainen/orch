@@ -33,25 +33,34 @@ func (e *Executor) Execute() (any, error) {
 	}
 	if !exists {
 		if !e.Config.DryRun {
-			cmd := []string{"qvm-create"}
+			var cmd []string
+			if e.Clone != nil {
+				cmd = []string{"qvm-clone"}
+			} else {
+				cmd = []string{"qvm-create"}
 
-			if e.Preferences.Label != nil {
-				cmd = append(cmd, "--label", *e.Preferences.Label)
+				if e.Preferences.Label != nil {
+					cmd = append(cmd, "--label", *e.Preferences.Label)
+				}
+
+				if e.Preferences.Template != nil {
+					cmd = append(cmd, "--template", *e.Preferences.Template)
+				}
+
+				if e.Preferences.NetVM != nil {
+					cmd = append(cmd, fmt.Sprintf("--property=netvm=%s", *e.Preferences.NetVM))
+				}
 			}
 
 			if e.Preferences.Class != nil {
 				cmd = append(cmd, "--class", *e.Preferences.Class)
 			}
 
-			if e.Preferences.Template != nil {
-				cmd = append(cmd, "--template", *e.Preferences.Template)
+			cmd = append(cmd, "--")
+			if e.Clone != nil {
+				cmd = append(cmd, *e.Clone)
 			}
-
-			if e.Preferences.NetVM != nil {
-				cmd = append(cmd, fmt.Sprintf("--property=netvm=%s", *e.Preferences.NetVM))
-			}
-
-			cmd = append(cmd, "--", e.Name)
+			cmd = append(cmd, e.Name)
 
 			_, err := process.Exec(&process.ExecOptions{
 				Command: cmd,
