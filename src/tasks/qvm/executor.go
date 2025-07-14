@@ -76,7 +76,7 @@ func (e *Executor) Execute() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if status == outputs.StatusUnchanged {
+		if status == outputs.StatusChanged {
 			status = prefStatus
 		}
 		prefChanges = tmp
@@ -85,7 +85,7 @@ func (e *Executor) Execute() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if status == outputs.StatusUnchanged {
+		if status == outputs.StatusChanged {
 			status = svcStatus
 		}
 		svcChanges = tmp
@@ -94,7 +94,7 @@ func (e *Executor) Execute() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if fwStatus == outputs.StatusUnchanged {
+		if fwStatus == outputs.StatusChanged {
 			status = fwStatus
 		}
 		fwChanges = tmp
@@ -103,7 +103,7 @@ func (e *Executor) Execute() (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if featStatus == outputs.StatusUnchanged {
+		if featStatus == outputs.StatusChanged {
 			status = featStatus
 		}
 		featChanges = tmp
