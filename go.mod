@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/fatih/color v1.15.0
+	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/illikainen/go-cryptor v0.0.0-20250623134026-b11812c5c300
 	github.com/illikainen/go-netutils v0.0.0-20250623133943-f5113e6adc13
@@ -25,7 +26,6 @@ require (
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/apparentlymart/go-dump v0.0.0-20190214190832-042adf3cf4a0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
