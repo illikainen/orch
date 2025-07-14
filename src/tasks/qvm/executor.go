@@ -69,6 +69,7 @@ func (e *Executor) Execute() (any, error) {
 	var svcChanges []string
 	var fwChanges []string
 	var featChanges []string
+	var volChanges []string
 
 	if exists || !e.Config.DryRun {
 		prefStatus, tmp, err := e.Preferences.Apply(e.Name, e.Config.DryRun)
@@ -106,6 +107,17 @@ func (e *Executor) Execute() (any, error) {
 			status = featStatus
 		}
 		featChanges = tmp
+
+		for _, vol := range e.Volumes {
+			volStatus, tmp, err := vol.Apply(e.Name, e.Config.DryRun)
+			if err != nil {
+				return nil, err
+			}
+			if volStatus == outputs.StatusChanged {
+				status = volStatus
+			}
+			volChanges = append(volChanges, tmp...)
+		}
 	}
 
 	return &outputs.Output{
@@ -116,6 +128,7 @@ func (e *Executor) Execute() (any, error) {
 			"services":    svcChanges,
 			"firewall":    fwChanges,
 			"features":    featChanges,
+			"volumes":     volChanges,
 		},
 	}, nil
 }
