@@ -44,6 +44,9 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 	if services, ok := values["services"]; ok {
 		values["services"] = qvm_prefs.HandleDefaultPreferences(services)
 	}
+	if features, ok := values["features"]; ok {
+		values["features"] = qvm_prefs.HandleDefaultPreferences(features)
+	}
 	value = cty.ObjectVal(values)
 
 	err = utils.FromCtyValue(value, d)
