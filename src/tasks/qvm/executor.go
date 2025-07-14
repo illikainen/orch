@@ -69,6 +69,7 @@ func (e *Executor) Execute() (any, error) {
 	var svcChanges []string
 	var fwChanges []string
 	var featChanges []string
+	var tagChanges []string
 	var volChanges []string
 
 	if exists || !e.Config.DryRun {
@@ -108,6 +109,15 @@ func (e *Executor) Execute() (any, error) {
 		}
 		featChanges = tmp
 
+		tagStatus, tmp, err := e.Tags.Apply(e.Name, e.Config.DryRun)
+		if err != nil {
+			return nil, err
+		}
+		if tagStatus == outputs.StatusChanged {
+			status = tagStatus
+		}
+		tagChanges = tmp
+
 		for _, vol := range e.Volumes {
 			volStatus, tmp, err := vol.Apply(e.Name, e.Config.DryRun)
 			if err != nil {
@@ -128,6 +138,7 @@ func (e *Executor) Execute() (any, error) {
 			"services":    svcChanges,
 			"firewall":    fwChanges,
 			"features":    featChanges,
+			"tags":        tagChanges,
 			"volumes":     volChanges,
 		},
 	}, nil

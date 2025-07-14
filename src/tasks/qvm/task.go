@@ -15,6 +15,7 @@ type Task struct {
 	Services    qubes.Services    `json:"services"  hcl:"services,optional"`
 	Firewall    qubes.Firewall    `json:"firewall"  hcl:"firewall,optional"`
 	Features    qubes.Features    `json:"features"  hcl:"features,optional"`
+	Tags        qubes.Tags        `json:"tags"      hcl:"tags,optional"`
 	Volumes     []qubes.Volume    `json:"volume"    hcl:"volume,optional"`
 	Config      *configs.Config   `json:"config"    hcl:"-"`
 	value       cty.Value
