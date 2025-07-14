@@ -7,7 +7,6 @@ import (
 	"github.com/illikainen/orch/src/rpc/worker"
 	"github.com/illikainen/orch/src/tasks/outputs"
 	"github.com/illikainen/orch/src/tasks/qvm_prefs"
-	"github.com/illikainen/orch/src/tasks/qvm_service"
 
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/process"
@@ -82,7 +81,7 @@ func (e *Executor) Execute() (any, error) {
 		}
 		prefChanges = tmp
 
-		svcStatus, tmp, err := qvm_service.Apply(e.Name, &e.Services, e.Config.DryRun)
+		svcStatus, tmp, err := e.Services.Apply(e.Name, e.Config.DryRun)
 		if err != nil {
 			return nil, err
 		}

@@ -8,6 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/illikainen/orch/src/tasks/outputs"
+
+	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/process"
 	"github.com/pkg/errors"
 )
@@ -36,10 +39,20 @@ type Services struct { // revive:disable:line-length-limit
 	Defaults            []string `json:"defaults,omitempty"              hcl:"-"`
 } // revive:enable:line-length-limit
 
-func (s *Services) Apply(name string, dryRun bool) ([]string, error) {
+func (s *Services) Apply(name string, dryRun bool) (int, []string, error) {
+	if dryRun {
+		exists, err := Check(name)
+		if err != nil {
+			return 0, nil, err
+		}
+		if !exists {
+			return outputs.StatusIndeterminate, nil, nil
+		}
+	}
+
 	svc, err := services(name)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
 
 	arg := map[bool]string{
@@ -57,7 +70,7 @@ func (s *Services) Apply(name string, dryRun bool) ([]string, error) {
 		if field.Type.Kind() == reflect.Ptr && field.Type.Elem().Kind() == reflect.Bool && !value.IsNil() {
 			fieldName := strings.ReplaceAll(strings.Split(field.Tag.Get("json"), ",")[0], "_", "-")
 			if fieldName == "" {
-				return nil, errors.Errorf("invalid json tag name for: %s", field.Name)
+				return 0, nil, errors.Errorf("invalid json tag name for: %s", field.Name)
 			}
 			fieldValue := value.Elem().Bool()
 
@@ -68,14 +81,14 @@ func (s *Services) Apply(name string, dryRun bool) ([]string, error) {
 						Command: []string{"qvm-service", arg[fieldValue], "--", name, fieldName},
 					})
 					if err != nil {
-						return nil, err
+						return 0, nil, err
 					}
 				}
 
 				if ok {
-					changes = append(changes, fmt.Sprintf("%t -> %t", curValue, fieldValue))
+					changes = append(changes, fmt.Sprintf("%s: %t -> %t", fieldName, curValue, fieldValue))
 				} else {
-					changes = append(changes, fmt.Sprintf("*default* -> %t", fieldValue))
+					changes = append(changes, fmt.Sprintf("%s: *default* -> %t", fieldName, fieldValue))
 				}
 			}
 		}
@@ -90,14 +103,14 @@ func (s *Services) Apply(name string, dryRun bool) ([]string, error) {
 					Command: []string{"qvm-service", "--default", "--", name, fieldName},
 				})
 				if err != nil {
-					return nil, err
+					return 0, nil, err
 				}
 			}
 			changes = append(changes, fmt.Sprintf("%t -> *default*", curValue))
 		}
 	}
 
-	return changes, nil
+	return fn.Ternary(changes == nil, outputs.StatusUnchanged, outputs.StatusChanged), changes, nil
 }
 
 func services(name string) (map[string]bool, error) {
