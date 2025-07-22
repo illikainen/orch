@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/illikainen/go-utils/src/structor"
 	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/gocty"
@@ -30,6 +31,11 @@ func FromCtyValue(value cty.Value, out any) error {
 	}
 
 	err = json.Unmarshal(data, out)
+	if err != nil {
+		return err
+	}
+
+	err = structor.Apply(out, nil)
 	if err != nil {
 		return err
 	}
