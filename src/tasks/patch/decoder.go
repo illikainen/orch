@@ -45,10 +45,6 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		return err
 	}
 
-	if value.GetAttr("condition").IsNull() {
-		d.Condition = true
-	}
-
 	patch := d.Patch
 	if !filepath.IsAbs(patch) {
 		patch, err = utils.JoinCtyPath(body.(*hclsyntax.Body), patch)
@@ -73,7 +69,7 @@ func (d *Decoder) Validate() error {
 }
 
 func (d *Decoder) Include() bool {
-	return d.Condition
+	return d.Condition != nil && *d.Condition
 }
 
 func (d *Decoder) Value() cty.Value {

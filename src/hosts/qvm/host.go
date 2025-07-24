@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/embeds"
 	"github.com/illikainen/orch/src/metadata"
 	"github.com/illikainen/orch/src/qubes"
@@ -25,9 +26,9 @@ import (
 )
 
 type Host struct {
-	Condition bool
-	Hostname  string
-	Become    string
+	Condition *bool  `hcl:"condition,optional" default:"true"`
+	Hostname  string `hcl:"hostname,optional"`
+	Become    string `hcl:"become,optional"`
 	name      string
 	bin       string
 	sys       *sysinfo
@@ -37,35 +38,19 @@ type Host struct {
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
-	value, diags := hcldec.Decode(
-		body,
-		&hcldec.ObjectSpec{
-			"condition": &hcldec.AttrSpec{
-				Name: "condition",
-				Type: cty.Bool,
-			},
-			"hostname": &hcldec.AttrSpec{
-				Name: "hostname",
-				Type: cty.String,
-			},
-			"become": &hcldec.AttrSpec{
-				Name: "become",
-				Type: cty.String,
-			},
-		},
-		ctx,
-	)
-	if diags != nil {
-		return diags
-	}
-
-	err := utils.FromCtyValue(value, h)
+	spec, err := codec.GenerateObjectSpec(h)
 	if err != nil {
 		return err
 	}
 
-	if value.GetAttr("condition").IsNull() {
-		h.Condition = true
+	value, diags := hcldec.Decode(body, spec, ctx)
+	if diags != nil {
+		return diags
+	}
+
+	err = utils.FromCtyValue(value, h)
+	if err != nil {
+		return err
 	}
 
 	h.name = name
@@ -83,7 +68,7 @@ func (h *Host) Validate() error {
 }
 
 func (h *Host) Include() bool {
-	return h.Condition
+	return h.Condition != nil && *h.Condition
 }
 
 func (h *Host) Value() cty.Value {

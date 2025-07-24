@@ -9,10 +9,10 @@ import (
 )
 
 type Task struct {
-	Condition bool            `json:"condition" hcl:"condition,optional"`
+	Condition *bool           `json:"condition" hcl:"condition,optional" default:"true"`
 	Path      string          `json:"path"      hcl:"path"`
 	Line      string          `json:"line"      hcl:"line"`
-	Regexp    *codec.Regexp   `json:"regexp"    hcl:"regexp"            orch:"string"`
+	Regexp    *codec.Regexp   `json:"regexp"    hcl:"regexp"             orch:"string"`
 	Config    *configs.Config `json:"config"    hcl:"-"`
 	value     cty.Value
 }

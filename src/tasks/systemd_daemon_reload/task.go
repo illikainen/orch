@@ -8,7 +8,7 @@ import (
 )
 
 type Task struct {
-	Condition bool            `json:"condition" hcl:"condition,optional"`
+	Condition *bool           `json:"condition" hcl:"condition,optional" default:"true"`
 	Config    *configs.Config `json:"config"    hcl:"-"`
 	value     cty.Value
 }

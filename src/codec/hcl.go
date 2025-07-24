@@ -185,6 +185,11 @@ func GenerateObjectSpec(v any) (*hcldec.ObjectSpec, error) {
 				MinItems: fn.Ternary(tags.Required, 1, 0),
 			}
 		} else {
+			if kind == reflect.Interface {
+				if field.Type.Implements(reflect.TypeOf((*hcl.Body)(nil)).Elem()) {
+					continue
+				}
+			}
 			return nil, errors.Errorf("%s: unsupported type: %s", tags.Name, kind)
 		}
 	}
