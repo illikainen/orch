@@ -6,9 +6,11 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/illikainen/go-utils/src/assoc"
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -18,81 +20,94 @@ type BodySchema struct {
 }
 
 func GenerateBodySchema(v any) (*BodySchema, error) {
-	spec, err := GenerateObjectSpec(v)
-	if err != nil {
-		return nil, err
-	}
-
-	body := &BodySchema{
+	bs := &BodySchema{
 		Schema: &hcl.BodySchema{},
 		Blocks: map[string]*BodySchema{},
 	}
 
-	for name, spec := range *spec {
-		if attr, ok := spec.(*hcldec.AttrSpec); ok {
-			body.Schema.Attributes = append(body.Schema.Attributes, hcl.AttributeSchema{
-				Name:     name,
-				Required: attr.Required,
-			})
-		} else if _, ok := spec.(*hcldec.BlockSpec); ok {
-			body.Schema.Blocks = append(body.Schema.Blocks, hcl.BlockHeaderSchema{
-				Type: name,
-			})
-
-			field, ok := fieldByTagName(v, name)
-			if !ok {
-				return nil, errors.Errorf("%s: unknown field", name)
-			}
-
-			blockBody, err := GenerateBodySchema(reflect.New(field.Type).Interface())
-			if err != nil {
-				return nil, err
-			}
-			body.Blocks[name] = blockBody
-		} else if _, ok := spec.(*hcldec.BlockListSpec); ok {
-			body.Schema.Blocks = append(body.Schema.Blocks, hcl.BlockHeaderSchema{
-				Type: name,
-			})
-
-			field, ok := fieldByTagName(v, name)
-			if !ok {
-				return nil, errors.Errorf("%s: unknown field", name)
-			}
-
-			blockBody, err := GenerateBodySchema(reflect.New(field.Type.Elem()).Interface())
-			if err != nil {
-				return nil, err
-			}
-			body.Blocks[name] = blockBody
-		}
-	}
-
-	return body, nil
-}
-
-func fieldByTagName(v any, name string) (reflect.StructField, bool) {
 	typ := reflect.TypeOf(v)
-	if typ.Kind() == reflect.Ptr {
+	for typ.Kind() == reflect.Ptr {
 		typ = typ.Elem()
 	}
+	log.Tracef("%s: generating body schema...", typ.Name())
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
+		if !field.IsExported() {
+			continue
+		}
 
 		tags := parseFieldTags(field)
-		if tags.Name == name {
-			return field, true
+		if tags.Name == "-" {
+			continue
 		}
 
-		if field.Type.Kind() == reflect.Struct && field.Anonymous {
-			f, ok := fieldByTagName(reflect.New(field.Type).Interface(), name)
-			if ok {
-				return f, ok
-			}
+		kind := field.Type.Kind()
+		if kind == reflect.Ptr {
+			kind = field.Type.Elem().Kind()
 		}
+
+		switch kind {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Bool, reflect.String:
+			log.Tracef("%s: add '%s' as AttributeSchema", typ.Name(), tags.Name)
+			bs.Schema.Attributes = append(bs.Schema.Attributes, hcl.AttributeSchema{
+				Name:     tags.Name,
+				Required: tags.Required,
+			})
+			continue
+		case reflect.Slice:
+			if field.Type.Elem().Kind() == reflect.Struct {
+				log.Tracef("%s: add '%s' as BlockHeaderSchema (slice)", typ.Name(), tags.Name)
+				bs.Schema.Blocks = append(bs.Schema.Blocks, hcl.BlockHeaderSchema{
+					Type: tags.Name,
+				})
+
+				inner, err := GenerateBodySchema(reflect.New(field.Type.Elem()).Interface())
+				if err != nil {
+					return nil, err
+				}
+				bs.Blocks[tags.Name] = inner
+			} else {
+				log.Tracef("%s: add '%s' as AttributeSchema (slice)", typ.Name(), tags.Name)
+				bs.Schema.Attributes = append(bs.Schema.Attributes, hcl.AttributeSchema{
+					Name:     tags.Name,
+					Required: tags.Required,
+				})
+			}
+			continue
+		case reflect.Struct:
+			inner, err := GenerateBodySchema(reflect.New(field.Type).Interface())
+			if err != nil {
+				return nil, err
+			}
+
+			if field.Anonymous {
+				log.Tracef("%s: add '%s' as an embedded struct", typ.Name(), tags.Name)
+				bs.Schema.Attributes = append(bs.Schema.Attributes, inner.Schema.Attributes...)
+				bs.Schema.Blocks = append(bs.Schema.Blocks, inner.Schema.Blocks...)
+				bs.Blocks = assoc.Merge(bs.Blocks, inner.Blocks)
+			} else if tags.Type != cty.NilType {
+				log.Tracef("%s: add '%s' as AttributeSchema (override)", typ.Name(), tags.Name)
+				bs.Schema.Attributes = append(bs.Schema.Attributes, hcl.AttributeSchema{
+					Name:     tags.Name,
+					Required: tags.Required,
+				})
+			} else {
+				log.Tracef("%s: add '%s' as BlockHeaderSchema", typ.Name(), tags.Name)
+				bs.Schema.Blocks = append(bs.Schema.Blocks, hcl.BlockHeaderSchema{
+					Type: tags.Name,
+				})
+				bs.Blocks[tags.Name] = inner
+			}
+			continue
+		}
+
+		return nil, errors.Errorf("%s: %s: unsupported body field type: %s", typ.Name(), field.Name, kind)
 	}
 
-	return reflect.StructField{}, false
+	return bs, nil
 }
 
 func GenerateObjectSpec(v any) (*hcldec.ObjectSpec, error) {
