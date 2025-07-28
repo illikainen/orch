@@ -3,7 +3,7 @@ package configs
 import (
 	"os"
 
-	"github.com/illikainen/orch/src/codec"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
@@ -36,7 +36,7 @@ func (c *Config) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
 	}
 
 	if c.Body != nil {
-		spec, err := codec.GenerateObjectSpec(c)
+		spec, err := hclang.GenerateObjectSpec(c)
 		if err != nil {
 			return err
 		}

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/embeds"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/metadata"
 	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/rpc/controller"
@@ -38,7 +38,7 @@ type Host struct {
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
-	spec, err := codec.GenerateObjectSpec(h)
+	spec, err := hclang.GenerateObjectSpec(h)
 	if err != nil {
 		return err
 	}

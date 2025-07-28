@@ -4,8 +4,8 @@ package file_manage // revive:disable-line:var-naming
 import (
 	"encoding/base64"
 
-	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/tasks/decode"
 	"github.com/illikainen/orch/src/utils"
 
@@ -31,7 +31,7 @@ func NewDecoder() (decode.Decoder, error) {
 }
 
 func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
-	spec, err := codec.GenerateObjectSpec(d.Task)
+	spec, err := hclang.GenerateObjectSpec(d.Task)
 	if err != nil {
 		return err
 	}

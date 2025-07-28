@@ -9,8 +9,8 @@ import (
 
 	"github.com/kballard/go-shellquote"
 
-	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/embeds"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/metadata"
 	"github.com/illikainen/orch/src/rpc/controller"
 	"github.com/illikainen/orch/src/utils"
@@ -41,7 +41,7 @@ type Host struct {
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
-	spec, err := codec.GenerateObjectSpec(h)
+	spec, err := hclang.GenerateObjectSpec(h)
 	if err != nil {
 		return err
 	}

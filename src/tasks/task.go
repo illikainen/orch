@@ -5,8 +5,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/illikainen/orch/src/codec"
 	"github.com/illikainen/orch/src/configs"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
 	_ "github.com/illikainen/orch/src/tasks/cert_unbundle" // decoder
@@ -44,12 +44,12 @@ func (t *Task) PartialDecode() error {
 		return err
 	}
 
-	schema, err := codec.GenerateBodySchema(decoder)
+	schema, err := hclang.GenerateBodySchema(decoder)
 	if err != nil {
 		return errors.Wrap(err, t.Type)
 	}
 
-	deps, err := codec.Dependencies(t.Body, schema)
+	deps, err := hclang.Dependencies(t.Body, schema)
 	if err != nil {
 		return err
 	}
