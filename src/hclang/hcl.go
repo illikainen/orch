@@ -1,17 +1,20 @@
 package hclang
 
 import (
+	"path"
 	"reflect"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/illikainen/go-utils/src/assoc"
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
+	"github.com/zclconf/go-cty/cty/function"
 )
 
 type BodySchema struct {
@@ -19,7 +22,14 @@ type BodySchema struct {
 	Blocks map[string]*BodySchema
 }
 
-func GenerateBodySchema(v any) (*BodySchema, error) {
+func GenerateBodySchema(v any, opts *DecodeOptions) (*BodySchema, error) {
+	if opts == nil {
+		opts = &DecodeOptions{}
+	}
+	return generateBodySchema(v, opts, ".")
+}
+
+func generateBodySchema(v any, opts *DecodeOptions, location string) (*BodySchema, error) {
 	bs := &BodySchema{
 		Schema: &hcl.BodySchema{},
 		Blocks: map[string]*BodySchema{},
@@ -58,13 +68,18 @@ func GenerateBodySchema(v any) (*BodySchema, error) {
 			})
 			continue
 		case reflect.Slice:
-			if field.Type.Elem().Kind() == reflect.Struct {
+			if field.Type.Elem().Kind() == reflect.Struct || (field.Type.Elem().Kind() == reflect.Ptr &&
+				field.Type.Elem().Elem().Kind() == reflect.Struct) {
 				log.Tracef("%s: add '%s' as BlockHeaderSchema (slice)", typ.Name(), tags.Name)
 				bs.Schema.Blocks = append(bs.Schema.Blocks, hcl.BlockHeaderSchema{
 					Type: tags.Name,
 				})
 
-				inner, err := GenerateBodySchema(reflect.New(field.Type.Elem()).Interface())
+				inner, err := generateBodySchema(
+					reflect.New(field.Type.Elem()).Interface(),
+					opts,
+					path.Join(location, tags.Name),
+				)
 				if err != nil {
 					return nil, err
 				}
@@ -78,7 +93,11 @@ func GenerateBodySchema(v any) (*BodySchema, error) {
 			}
 			continue
 		case reflect.Struct:
-			inner, err := GenerateBodySchema(reflect.New(field.Type).Interface())
+			inner, err := generateBodySchema(
+				reflect.New(field.Type).Interface(),
+				opts,
+				path.Join(location, tags.Name),
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -107,6 +126,12 @@ func GenerateBodySchema(v any) (*BodySchema, error) {
 		return nil, errors.Errorf("%s: %s: unsupported body field type: %s", typ.Name(), field.Name, kind)
 	}
 
+	if seq.Contains(opts.ForEach, location) {
+		bs.Schema.Attributes = append(bs.Schema.Attributes, hcl.AttributeSchema{
+			Name:     "for_each",
+			Required: false,
+		})
+	}
 	return bs, nil
 }
 
@@ -281,6 +306,127 @@ func Dependencies(body hcl.Body, schema *BodySchema) ([]string, error) {
 	}
 
 	return deps, nil
+}
+
+type DecodeOptions struct {
+	Context *hcl.EvalContext
+	ForEach []string
+}
+
+func Decode(body hcl.Body, opts *DecodeOptions) (cty.Value, error) {
+	if opts == nil {
+		opts = &DecodeOptions{}
+	}
+
+	values, err := decode(body, opts, ".")
+	if err != nil {
+		return cty.NilVal, err
+	}
+
+	if !seq.Contains(opts.ForEach, ".") {
+		if len(values) != 1 {
+			return cty.NilVal, errors.Errorf("bug")
+		}
+		return values[0], nil
+	}
+	return cty.TupleVal(values), nil
+}
+
+func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, error) {
+	b, ok := body.(*hclsyntax.Body)
+	if !ok {
+		return nil, errors.Errorf("bug")
+	}
+
+	var result []cty.Value
+	if seq.Contains(opts.ForEach, location) && assoc.HasKey(b.Attributes, "for_each") {
+		forEach, diags := b.Attributes["for_each"].Expr.Value(opts.Context)
+		if diags != nil {
+			return nil, diags
+		}
+
+		if !forEach.CanIterateElements() {
+			return nil, errors.Errorf("for_each must be iterable")
+		}
+
+		it := forEach.ElementIterator()
+		for it.Next() {
+			_, each := it.Element()
+			ctx := cloneEvalContext(opts.Context)
+			ctx.Variables["each"] = each
+
+			values := map[string]cty.Value{}
+			for name, attr := range b.Attributes {
+				if name != "for_each" {
+					value, diags := attr.Expr.Value(ctx)
+					if diags != nil {
+						return nil, diags
+					}
+					values[name] = value
+				}
+			}
+
+			blocks := map[string][]cty.Value{}
+			for _, block := range b.Blocks {
+				o := *opts
+				o.Context = ctx
+				blockValues, diags := decode(block.Body, &o, path.Join(location, block.Type))
+				if diags != nil {
+					return nil, diags
+				}
+				blocks[block.Type] = append(blocks[block.Type], blockValues...)
+			}
+
+			for name, block := range blocks {
+				values[name] = cty.TupleVal(block)
+			}
+
+			result = append(result, cty.ObjectVal(values))
+		}
+	} else {
+		values := map[string]cty.Value{}
+		for name, attr := range b.Attributes {
+			value, diags := attr.Expr.Value(opts.Context)
+			if diags != nil {
+				return nil, diags
+			}
+			values[name] = value
+		}
+
+		blocks := map[string][]cty.Value{}
+		for _, block := range b.Blocks {
+			blockValues, diags := decode(block.Body, opts, path.Join(location, block.Type))
+			if diags != nil {
+				return nil, diags
+			}
+			blocks[block.Type] = append(blocks[block.Type], blockValues...)
+		}
+
+		for name, block := range blocks {
+			values[name] = cty.TupleVal(block)
+		}
+
+		result = append(result, cty.ObjectVal(values))
+	}
+
+	return result, nil
+}
+
+func cloneEvalContext(ctx *hcl.EvalContext) *hcl.EvalContext {
+	vars := map[string]cty.Value{}
+	for k, v := range ctx.Variables {
+		vars[k] = v
+	}
+
+	fns := map[string]function.Function{}
+	for k, v := range ctx.Functions {
+		fns[k] = v
+	}
+
+	return &hcl.EvalContext{
+		Variables: vars,
+		Functions: fns,
+	}
 }
 
 func Validate(body hcl.Body, v any, opts *DecodeOptions) (*hcl.BodyContent, error) {
