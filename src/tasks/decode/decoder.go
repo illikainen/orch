@@ -9,8 +9,9 @@ import (
 )
 
 type Decoder interface {
+	PartialDecode(hcl.Body) error
 	Decode(hcl.Body, *hcl.EvalContext, *configs.Config) error
-	Validate() error
+	Dependencies(hcl.Body) ([]string, error)
 	Include() bool
 	Value() cty.Value
 }

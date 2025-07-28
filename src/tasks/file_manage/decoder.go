@@ -10,11 +10,9 @@ import (
 	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/illikainen/go-utils/src/fn"
 	"github.com/illikainen/go-utils/src/iofs"
-	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -30,15 +28,21 @@ func NewDecoder() (decode.Decoder, error) {
 	return &Decoder{}, nil
 }
 
-func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
-	spec, err := hclang.GenerateObjectSpec(d.Task)
+func (d *Decoder) PartialDecode(body hcl.Body) error {
+	_, err := hclang.Validate(body, d.Task, nil)
 	if err != nil {
 		return err
 	}
 
-	value, diags := hcldec.Decode(body, spec, ctx)
-	if diags != nil {
-		return diags
+	return nil
+}
+
+func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
+	value, err := hclang.Decode(body, &hclang.DecodeOptions{
+		Context: ctx,
+	})
+	if err != nil {
+		return err
 	}
 
 	err = utils.FromCtyValue(value, d)
@@ -74,11 +78,13 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 	return nil
 }
 
-func (d *Decoder) Validate() error {
-	if d.Src == "" && d.Content == "" {
-		return errors.Errorf("Missing required argument; Either \"src\" or \"content\" is required.")
+func (d *Decoder) Dependencies(body hcl.Body) ([]string, error) {
+	schema, err := hclang.GenerateBodySchema(d.Task, nil)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	return hclang.Dependencies(body, schema)
 }
 
 func (d *Decoder) Include() bool {

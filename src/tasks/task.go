@@ -3,10 +3,7 @@ package tasks
 import (
 	"encoding/json"
 
-	"github.com/pkg/errors"
-
 	"github.com/illikainen/orch/src/configs"
-	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
 	_ "github.com/illikainen/orch/src/tasks/cert_unbundle" // decoder
@@ -44,12 +41,12 @@ func (t *Task) PartialDecode() error {
 		return err
 	}
 
-	schema, err := hclang.GenerateBodySchema(decoder)
+	err = decoder.PartialDecode(t.Body)
 	if err != nil {
-		return errors.Wrap(err, t.Type)
+		return err
 	}
 
-	deps, err := hclang.Dependencies(t.Body, schema)
+	deps, err := decoder.Dependencies(t.Body)
 	if err != nil {
 		return err
 	}
@@ -79,7 +76,7 @@ func (t *Task) Decode(role string, host string, ctxfn func() (*hcl.EvalContext, 
 	t.Role = role
 	t.Host = host
 
-	return decoder.Validate()
+	return nil
 }
 
 func (t *Task) Validate() error {
