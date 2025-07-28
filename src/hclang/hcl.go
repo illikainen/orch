@@ -282,3 +282,17 @@ func Dependencies(body hcl.Body, schema *BodySchema) ([]string, error) {
 
 	return deps, nil
 }
+
+func Validate(body hcl.Body, v any, opts *DecodeOptions) (*hcl.BodyContent, error) {
+	bs, err := GenerateBodySchema(v, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	content, diags := body.Content(bs.Schema)
+	if diags != nil {
+		return nil, err
+	}
+
+	return content, nil
+}
