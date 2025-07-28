@@ -3,6 +3,7 @@ package blueprint
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -36,15 +37,41 @@ func getattr() function.Function {
 				Type: cty.DynamicPseudoType,
 			},
 		},
-		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Type: func(args []cty.Value) (cty.Type, error) {
+			return args[2].Type(), nil
+		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			values := args[0].AsValueMap()
 			key := args[1].AsString()
 			fallback := args[2]
 
-			value, ok := values[key]
-			if ok {
-				return value, nil
+			if value, ok := values[key]; ok {
+				valType := value.Type()
+				if valType.Equals(retType) {
+					return value, nil
+				}
+
+				if valType.Equals(cty.String) {
+					str := value.AsString()
+
+					if retType.Equals(cty.Bool) {
+						v, err := strconv.ParseBool(str)
+						if err != nil {
+							return cty.NilVal, err
+						}
+						return cty.BoolVal(v), nil
+					}
+
+					if retType.Equals(cty.Number) {
+						v, err := strconv.ParseFloat(str, reflect.TypeOf(float64(0)).Bits())
+						if err != nil {
+							return cty.NilVal, err
+						}
+						return cty.NumberFloatVal(v), nil
+					}
+				}
+
+				return cty.NilVal, errors.Errorf("getattr: unsupported type: %s", valType)
 			}
 
 			return fallback, nil
