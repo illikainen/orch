@@ -64,6 +64,10 @@ func preRun(_ *cobra.Command, _ []string) error {
 	}
 	log.SetLevel(level)
 
+	if level >= log.DebugLevel {
+		log.SetReportCaller(true)
+	}
+
 	bp := blueprint.NewBlueprint(&blueprint.Options{
 		Path:         options.config,
 		AllowMissing: true,
