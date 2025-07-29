@@ -1,9 +1,10 @@
 package roles
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
+
+	"github.com/illikainen/orch/src/hclang"
 )
 
 type Roles []*Role
@@ -18,9 +19,9 @@ func (r *Roles) PartialDecode() error {
 	return nil
 }
 
-func (r *Roles) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
+func (r *Roles) Decode(ctx *hclang.EvalContext) error {
 	for _, role := range *r {
-		if err := role.Decode(ctxfn); err != nil {
+		if err := role.Decode(ctx); err != nil {
 			return err
 		}
 	}

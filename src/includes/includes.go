@@ -1,7 +1,7 @@
 package includes
 
 import (
-	"github.com/hashicorp/hcl/v2"
+	"github.com/illikainen/orch/src/hclang"
 )
 
 type Includes []*Include
@@ -16,9 +16,9 @@ func (i *Includes) PartialDecode(basedir string) error {
 	return nil
 }
 
-func (i *Includes) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
+func (i *Includes) Decode(ctx *hclang.EvalContext) error {
 	for _, include := range *i {
-		err := include.Decode(ctxfn)
+		err := include.Decode(ctx)
 		if err != nil {
 			return err
 		}

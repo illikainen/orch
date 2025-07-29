@@ -37,13 +37,13 @@ func (h *Hosts) PartialDecode(filter *Filter) error {
 	return nil
 }
 
-func (h *Hosts) Variables() map[string]cty.Value {
+func (h *Hosts) Variables() (map[string]cty.Value, error) {
 	hosts := map[string]cty.Value{}
 	for _, host := range *h {
 		hosts[host.Name] = host.Value()
 	}
 
-	return map[string]cty.Value{"host": cty.ObjectVal(hosts)}
+	return map[string]cty.Value{"host": cty.ObjectVal(hosts)}, nil
 }
 
 func (h *Hosts) Validate() error {

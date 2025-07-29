@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/illikainen/orch/src/configs"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/rpc/controller"
 	_ "github.com/illikainen/orch/src/tasks/cert_unbundle" // decoder
@@ -55,13 +56,7 @@ func (t *Task) PartialDecode() error {
 	return nil
 }
 
-func (t *Task) Decode(role string, host string, ctxfn func() (*hcl.EvalContext, error),
-	config *configs.Config) error {
-	ctx, err := ctxfn()
-	if err != nil {
-		return err
-	}
-
+func (t *Task) Decode(role string, host string, ctx *hclang.EvalContext, config *configs.Config) error {
 	decoder, err := decode.Lookup(t.Type)
 	if err != nil {
 		return err

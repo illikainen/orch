@@ -1,6 +1,7 @@
 package hosts
 
 import (
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/hosts/local"
 	"github.com/illikainen/orch/src/hosts/qvm"
 	"github.com/illikainen/orch/src/hosts/ssh"
@@ -22,7 +23,7 @@ type Connector interface {
 	UploadBinary() error
 	Start() (*controller.Controller, error)
 	Close() error
-	Functions() map[string]function.Function
+	Functions() (map[string]function.Function, error)
 }
 
 type Host struct {
@@ -55,18 +56,18 @@ func (h *Host) PartialDecode() error {
 	return h.Validate()
 }
 
-func (h *Host) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
-	ctx, err := ctxfn()
-	if err != nil {
-		return err
-	}
-
+func (h *Host) Decode(ctx *hclang.EvalContext) error {
 	connector, err := h.getConnector()
 	if err != nil {
 		return err
 	}
 
-	err = connector.Decode(h.Name, h.Body, ctx)
+	c, err := ctx.Build()
+	if err != nil {
+		return err
+	}
+
+	err = connector.Decode(h.Name, h.Body, c)
 	if err != nil {
 		return err
 	}

@@ -20,11 +20,9 @@ import (
 	"github.com/illikainen/orch/src/tasks/outputs"
 	"github.com/illikainen/orch/src/variables"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/illikainen/go-cryptor/src/blob"
-	"github.com/illikainen/go-utils/src/assoc"
 	"github.com/illikainen/go-utils/src/base64"
 	"github.com/illikainen/go-utils/src/errorx"
 	"github.com/illikainen/go-utils/src/fn"
@@ -32,8 +30,6 @@ import (
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type Filter struct {
@@ -58,9 +54,6 @@ type Blueprint struct {
 	Hosts        hosts.Hosts         `hcl:"host,block"`
 	Bindings     bindings.Bindings   `hcl:"bind,block"`
 	Dependencies Dependencies
-	facts        *fact.Facts
-	output       outputs.Outputs
-	functions    map[string]function.Function
 	opts         *Options
 }
 
@@ -68,7 +61,6 @@ func NewBlueprint(opts *Options) *Blueprint {
 	return &Blueprint{
 		Config:       fn.Ternary(opts.Config != nil, opts.Config, &configs.Config{}),
 		Dependencies: map[string][]string{},
-		functions:    localFunctions(),
 		opts:         opts,
 	}
 }
@@ -238,19 +230,32 @@ func (b *Blueprint) partialDecodeMerge(path string) (err error) {
 }
 
 func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Outputs, err error) {
-	b.output = o
+	allOutputs := o
 
-	err = b.Includes.Decode(b.evalContext)
+	var facts fact.Facts
+	ctx := &hclang.EvalContext{
+		Variables: []hclang.EvalContextVariable{
+			&facts,
+			&b.Variables,
+			&b.Hosts,
+			&b.Bindings,
+			&allOutputs,
+		},
+		Functions: []hclang.EvalContextFunction{
+			&evalContextFunctions{},
+		},
+	}
+	err = b.Includes.Decode(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = b.Config.Decode(b.evalContext)
+	err = b.Config.Decode(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = b.Variables.Decode(b.evalContext)
+	err = b.Variables.Decode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +267,7 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 		return nil, errors.Errorf("invalid host: %s", name)
 	}
 
-	err = host.Decode(b.evalContext)
+	err = host.Decode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -291,28 +296,26 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 		return nil, err
 	}
 
-	var facts fact.Facts
 	err = json.Unmarshal(factsData, &facts)
 	if err != nil {
 		return nil, err
 	}
-	b.facts = &facts
 
-	b.functions = assoc.Merge(b.functions, host.Connector.Functions())
+	ctx.Functions = append(ctx.Functions, host.Connector)
 
 	for _, binding := range b.Bindings {
 		if !binding.Match(host) {
 			continue
 		}
 
-		err := binding.Decode(b.evalContext)
+		err := binding.Decode(ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, role := range binding.Roles {
 			for _, task := range role.Tasks {
-				err := task.Decode(role.Name, host.Name, b.evalContext, b.Config)
+				err := task.Decode(role.Name, host.Name, ctx, b.Config)
 				if err != nil {
 					return nil, err
 				}
@@ -322,13 +325,13 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 					return nil, errors.Errorf("%s: %s.%s: %s", host.Name, role.Name, task.Name, err)
 				}
 
-				b.output = append(b.output, out)
+				allOutputs = append(allOutputs, out)
 				output = append(output, out)
 
 				// This is an ugly workaround to allow referencing ${out.this} in HCL.
 				this := *out
 				this.Host = "this"
-				b.output = append(b.output, &this)
+				allOutputs = append(allOutputs, &this)
 
 				status := "up-to-date"
 				if out.Status == outputs.StatusChanged {
@@ -350,47 +353,4 @@ func (b *Blueprint) Apply(name string, o outputs.Outputs) (output outputs.Output
 	}
 
 	return output, nil
-}
-
-func (b *Blueprint) evalContext() (*hcl.EvalContext, error) {
-	ctx := &hcl.EvalContext{
-		Functions: b.functions,
-		Variables: map[string]cty.Value{},
-	}
-
-	facts, err := b.facts.Variables()
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, facts)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Variables.Variables())
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Hosts.Variables())
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Bindings.Variables())
-	if err != nil {
-		return nil, err
-	}
-
-	output, err := b.output.Variables()
-	if err != nil {
-		return nil, err
-	}
-	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, output)
-	if err != nil {
-		return nil, err
-	}
-
-	return ctx, nil
 }

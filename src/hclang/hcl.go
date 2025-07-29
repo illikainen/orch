@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/zclconf/go-cty/cty"
-	"github.com/zclconf/go-cty/cty/function"
 )
 
 type BodySchema struct {
@@ -309,13 +308,22 @@ func Dependencies(body hcl.Body, schema *BodySchema) ([]string, error) {
 }
 
 type DecodeOptions struct {
-	Context *hcl.EvalContext
+	Context *EvalContext
+	context *hcl.EvalContext
 	ForEach []string
 }
 
 func Decode(body hcl.Body, opts *DecodeOptions) (cty.Value, error) {
 	if opts == nil {
 		opts = &DecodeOptions{}
+	}
+
+	if opts.Context != nil {
+		ctx, err := opts.Context.Build()
+		if err != nil {
+			return cty.NilVal, err
+		}
+		opts.context = ctx
 	}
 
 	values, err := decode(body, opts, ".")
@@ -340,7 +348,7 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 
 	var result []cty.Value
 	if seq.Contains(opts.ForEach, location) && assoc.HasKey(b.Attributes, "for_each") {
-		forEach, diags := b.Attributes["for_each"].Expr.Value(opts.Context)
+		forEach, diags := b.Attributes["for_each"].Expr.Value(opts.context)
 		if diags != nil {
 			return nil, diags
 		}
@@ -352,7 +360,10 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 		it := forEach.ElementIterator()
 		for it.Next() {
 			_, each := it.Element()
-			ctx := cloneEvalContext(opts.Context)
+			ctx := opts.context.NewChild()
+			if ctx.Variables == nil {
+				ctx.Variables = map[string]cty.Value{}
+			}
 			ctx.Variables["each"] = each
 
 			values := map[string]cty.Value{}
@@ -369,7 +380,7 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 			blocks := map[string][]cty.Value{}
 			for _, block := range b.Blocks {
 				o := *opts
-				o.Context = ctx
+				o.context = ctx
 				blockValues, diags := decode(block.Body, &o, path.Join(location, block.Type))
 				if diags != nil {
 					return nil, diags
@@ -386,7 +397,7 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 	} else {
 		values := map[string]cty.Value{}
 		for name, attr := range b.Attributes {
-			value, diags := attr.Expr.Value(opts.Context)
+			value, diags := attr.Expr.Value(opts.context)
 			if diags != nil {
 				return nil, diags
 			}
@@ -410,23 +421,6 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 	}
 
 	return result, nil
-}
-
-func cloneEvalContext(ctx *hcl.EvalContext) *hcl.EvalContext {
-	vars := map[string]cty.Value{}
-	for k, v := range ctx.Variables {
-		vars[k] = v
-	}
-
-	fns := map[string]function.Function{}
-	for k, v := range ctx.Functions {
-		fns[k] = v
-	}
-
-	return &hcl.EvalContext{
-		Variables: vars,
-		Functions: fns,
-	}
 }
 
 func Validate(body hcl.Body, v any, opts *DecodeOptions) (*hcl.BodyContent, error) {

@@ -2,8 +2,6 @@ package includes
 
 import (
 	"github.com/illikainen/orch/src/hclang"
-
-	"github.com/hashicorp/hcl/v2"
 )
 
 type Include struct {
@@ -21,6 +19,6 @@ func (i *Include) PartialDecode(basedir string) error {
 	return nil
 }
 
-func (i *Include) Decode(_ func() (*hcl.EvalContext, error)) error {
+func (i *Include) Decode(_ *hclang.EvalContext) error {
 	return nil
 }

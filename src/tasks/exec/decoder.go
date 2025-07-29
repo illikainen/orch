@@ -31,7 +31,7 @@ func (d *Decoder) PartialDecode(body hcl.Body) error {
 	return nil
 }
 
-func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Config) error {
+func (d *Decoder) Decode(body hcl.Body, ctx *hclang.EvalContext, config *configs.Config) error {
 	value, err := hclang.Decode(body, &hclang.DecodeOptions{
 		Context: ctx,
 	})

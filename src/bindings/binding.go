@@ -7,7 +7,6 @@ import (
 	"github.com/illikainen/orch/src/hosts"
 	"github.com/illikainen/orch/src/roles"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -46,8 +45,8 @@ func (b *Binding) PartialDecode(basedir string) error {
 	return nil
 }
 
-func (b *Binding) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
-	return b.Roles.Decode(ctxfn)
+func (b *Binding) Decode(ctx *hclang.EvalContext) error {
+	return b.Roles.Decode(ctx)
 }
 
 func (b *Binding) Match(host *hosts.Host) bool {

@@ -7,10 +7,10 @@ import (
 	"github.com/zclconf/go-cty/cty/function"
 )
 
-func (h *Host) Functions() map[string]function.Function {
+func (h *Host) Functions() (map[string]function.Function, error) {
 	return map[string]function.Function{
 		"exists": h.exists(),
-	}
+	}, nil
 }
 
 func (h *Host) exists() function.Function {

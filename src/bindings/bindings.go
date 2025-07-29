@@ -18,7 +18,7 @@ func (b *Bindings) PartialDecode(basedir string) error {
 	return b.Validate()
 }
 
-func (b *Bindings) Variables() map[string]cty.Value {
+func (b *Bindings) Variables() (map[string]cty.Value, error) {
 	roles := map[string]cty.Value{}
 	bindings := map[string]cty.Value{}
 
@@ -32,7 +32,7 @@ func (b *Bindings) Variables() map[string]cty.Value {
 	return map[string]cty.Value{
 		"bind": cty.ObjectVal(bindings),
 		"role": cty.ObjectVal(roles),
-	}
+	}, nil
 }
 
 func (b *Bindings) Validate() error {

@@ -23,24 +23,22 @@ func (c *Config) PartialDecode() error {
 	return nil
 }
 
-func (c *Config) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
-	var ctx *hcl.EvalContext
-
-	if ctxfn != nil {
-		var err error
-		ctx, err = ctxfn()
-		if err != nil {
-			return err
-		}
-	}
-
+func (c *Config) Decode(ctx *hclang.EvalContext) error {
 	if c.Body != nil {
 		spec, err := hclang.GenerateObjectSpec(c)
 		if err != nil {
 			return err
 		}
 
-		value, diags := hcldec.Decode(c.Body, spec, ctx)
+		var cur *hcl.EvalContext
+		if ctx != nil {
+			cur, err = ctx.Build()
+			if err != nil {
+				return err
+			}
+		}
+
+		value, diags := hcldec.Decode(c.Body, spec, cur)
 		if diags != nil {
 			return diags
 		}

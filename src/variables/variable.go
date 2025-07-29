@@ -1,6 +1,8 @@
 package variables
 
 import (
+	"github.com/illikainen/orch/src/hclang"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/zclconf/go-cty/cty"
@@ -17,8 +19,8 @@ func (v *Variable) PartialDecode() error {
 	return nil
 }
 
-func (v *Variable) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
-	ctx, err := ctxfn()
+func (v *Variable) Decode(ctx *hclang.EvalContext) error {
+	c, err := ctx.Build()
 	if err != nil {
 		return err
 	}
@@ -31,7 +33,7 @@ func (v *Variable) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
 				Type: cty.DynamicPseudoType,
 			},
 		},
-		ctx,
+		c,
 	)
 	if diags != nil {
 		return diags

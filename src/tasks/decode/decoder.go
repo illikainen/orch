@@ -2,6 +2,7 @@ package decode
 
 import (
 	"github.com/illikainen/orch/src/configs"
+	"github.com/illikainen/orch/src/hclang"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
@@ -10,7 +11,7 @@ import (
 
 type Decoder interface {
 	PartialDecode(hcl.Body) error
-	Decode(hcl.Body, *hcl.EvalContext, *configs.Config) error
+	Decode(hcl.Body, *hclang.EvalContext, *configs.Config) error
 	Dependencies(hcl.Body) ([]string, error)
 	Include() bool
 	Value() cty.Value

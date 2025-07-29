@@ -13,12 +13,14 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
-func localFunctions() map[string]function.Function {
+type evalContextFunctions struct{}
+
+func (e *evalContextFunctions) Functions() (map[string]function.Function, error) {
 	return map[string]function.Function{
 		"getattr": getattr(),
 		"oct":     oct(),
 		"print":   printer(),
-	}
+	}, nil
 }
 
 func getattr() function.Function {

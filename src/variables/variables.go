@@ -1,10 +1,11 @@
 package variables
 
 import (
-	"github.com/hashicorp/hcl/v2"
 	"github.com/illikainen/go-utils/src/seq"
 	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/illikainen/orch/src/hclang"
 )
 
 type Variables []*Variable
@@ -18,9 +19,9 @@ func (v *Variables) PartialDecode() error {
 	return nil
 }
 
-func (v *Variables) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
+func (v *Variables) Decode(ctx *hclang.EvalContext) error {
 	for _, elt := range *v {
-		if err := elt.Decode(ctxfn); err != nil {
+		if err := elt.Decode(ctx); err != nil {
 			return err
 		}
 	}
@@ -35,13 +36,13 @@ func (v *Variables) Dependencies() []string {
 	return deps
 }
 
-func (v *Variables) Variables() map[string]cty.Value {
+func (v *Variables) Variables() (map[string]cty.Value, error) {
 	vars := map[string]cty.Value{}
 	for _, variable := range *v {
 		vars[variable.Name] = variable.Value()
 	}
 
-	return map[string]cty.Value{"var": cty.ObjectVal(vars)}
+	return map[string]cty.Value{"var": cty.ObjectVal(vars)}, nil
 }
 
 func (v *Variables) Validate() error {

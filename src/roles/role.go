@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/tasks"
 	"github.com/illikainen/orch/src/variables"
 
-	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/illikainen/go-utils/src/seq"
@@ -75,8 +75,8 @@ func (r *Role) PartialDecode() error {
 	return r.Validate()
 }
 
-func (r *Role) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
-	err := r.Variables.Decode(ctxfn)
+func (r *Role) Decode(ctx *hclang.EvalContext) error {
+	err := r.Variables.Decode(ctx)
 	if err != nil {
 		return err
 	}
