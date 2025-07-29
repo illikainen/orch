@@ -78,14 +78,14 @@ func (t *Task) Validate() error {
 	return nil
 }
 
-func (t *Task) Include() bool {
-	return t.decoder.Include()
+func (t *Task) Condition() bool {
+	return t.decoder.Condition()
 }
 
 func (t *Task) Apply(ctrl *controller.Controller) (*outputs.Output, error) {
 	var output outputs.Output
 
-	if t.Include() {
+	if t.Condition() {
 		rv, err := ctrl.Call(&rpc.FunctionCall{
 			Function: t.Type,
 			Params:   t.decoder,

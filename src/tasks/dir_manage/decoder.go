@@ -127,8 +127,8 @@ func (d *Decoder) Dependencies(body hcl.Body) ([]string, error) {
 	return hclang.Dependencies(body, schema)
 }
 
-func (d *Decoder) Include() bool {
-	return d.Condition != nil && *d.Condition
+func (d *Decoder) Condition() bool {
+	return d.Cond != nil && *d.Cond
 }
 
 func (d *Decoder) Value() cty.Value {

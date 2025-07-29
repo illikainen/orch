@@ -13,7 +13,7 @@ type Decoder interface {
 	PartialDecode(hcl.Body) error
 	Decode(hcl.Body, *hclang.EvalContext, *configs.Config) error
 	Dependencies(hcl.Body) ([]string, error)
-	Include() bool
+	Condition() bool
 	Value() cty.Value
 }
 

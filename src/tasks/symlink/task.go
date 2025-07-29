@@ -9,7 +9,7 @@ import (
 )
 
 type Task struct {
-	Condition    *bool           `json:"condition"     hcl:"condition,optional"     default:"true"`
+	Cond         *bool           `json:"condition"     hcl:"condition,optional"     default:"true"`
 	Src          string          `json:"src"           hcl:"src"`
 	Dst          string          `json:"dst"           hcl:"dst"`
 	DirMode      os.FileMode     `json:"dir_mode"      hcl:"dir_mode,optional"`

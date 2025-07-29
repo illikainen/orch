@@ -27,17 +27,17 @@ import (
 )
 
 type Host struct {
-	Condition *bool  `hcl:"condition,optional" default:"true"`
-	Hostname  string `hcl:"hostname,optional"`
-	User      string `hcl:"user,optional"`
-	Password  string `hcl:"password,optional"`
-	Become    string `hcl:"become,optional"`
-	name      string
-	conn      *sshx.Client
-	bin       string
-	sys       *sysinfo
-	value     cty.Value
-	session   *ssh.Session
+	Cond     *bool  `hcl:"condition,optional" default:"true"`
+	Hostname string `hcl:"hostname,optional"`
+	User     string `hcl:"user,optional"`
+	Password string `hcl:"password,optional"`
+	Become   string `hcl:"become,optional"`
+	name     string
+	conn     *sshx.Client
+	bin      string
+	sys      *sysinfo
+	value    cty.Value
+	session  *ssh.Session
 }
 
 func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
@@ -70,8 +70,8 @@ func (h *Host) Validate() error {
 	return nil
 }
 
-func (h *Host) Include() bool {
-	return h.Condition != nil && *h.Condition
+func (h *Host) Condition() bool {
+	return h.Cond != nil && *h.Cond
 }
 
 func (h *Host) Value() cty.Value {

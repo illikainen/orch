@@ -7,9 +7,9 @@ import (
 )
 
 type Task struct {
-	Condition *bool           `json:"condition" hcl:"condition,optional" default:"true"`
-	Name      string          `json:"name"      hcl:"name"`
-	Action    string          `json:"action"    hcl:"action"`
-	Config    *configs.Config `json:"config"    hcl:"-"`
-	value     cty.Value
+	Cond   *bool           `json:"condition" hcl:"condition,optional" default:"true"`
+	Name   string          `json:"name"      hcl:"name"`
+	Action string          `json:"action"    hcl:"action"`
+	Config *configs.Config `json:"config"    hcl:"-"`
+	value  cty.Value
 }
