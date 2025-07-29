@@ -14,6 +14,7 @@ import (
 	_ "github.com/illikainen/orch/src/tasks/file_line"   // decoder
 	_ "github.com/illikainen/orch/src/tasks/file_manage" // decoder
 	_ "github.com/illikainen/orch/src/tasks/file_remove" // decoder
+	_ "github.com/illikainen/orch/src/tasks/nftables"    // decoder
 	"github.com/illikainen/orch/src/tasks/outputs"
 	_ "github.com/illikainen/orch/src/tasks/patch"                 // decoder
 	_ "github.com/illikainen/orch/src/tasks/qvm"                   // decoder
