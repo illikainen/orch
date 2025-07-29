@@ -3,9 +3,9 @@ package bindings
 import (
 	"path/filepath"
 
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/hosts"
 	"github.com/illikainen/orch/src/roles"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/illikainen/go-utils/src/seq"
@@ -24,7 +24,7 @@ type Binding struct {
 
 func (b *Binding) PartialDecode(basedir string) error {
 	for _, roledir := range b.RoleDirs {
-		dir, err := utils.JoinCtyPath(basedir, roledir)
+		dir, err := hclang.JoinCtyPath(basedir, roledir)
 		if err != nil {
 			return err
 		}

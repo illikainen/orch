@@ -1,4 +1,4 @@
-package utils
+package hclang
 
 import (
 	"encoding/json"

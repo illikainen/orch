@@ -10,7 +10,6 @@ import (
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/tasks/decode"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -54,12 +53,12 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		return err
 	}
 
-	err = utils.FromCtyValue(value, d)
+	err = hclang.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}
 
-	base, err := utils.JoinCtyPath(body.(*hclsyntax.Body), d.Src)
+	base, err := hclang.JoinCtyPath(body.(*hclsyntax.Body), d.Src)
 	if err != nil {
 		return err
 	}
@@ -74,7 +73,7 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		}
 
 		exclude := seq.ContainsBy(d.Exclude, func(elt string) bool {
-			pattern, e := utils.JoinCtyPath(body.(*hclsyntax.Body), elt)
+			pattern, e := hclang.JoinCtyPath(body.(*hclsyntax.Body), elt)
 			if err != nil {
 				err = e
 				return false

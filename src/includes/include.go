@@ -1,7 +1,7 @@
 package includes
 
 import (
-	"github.com/illikainen/orch/src/utils"
+	"github.com/illikainen/orch/src/hclang"
 
 	"github.com/hashicorp/hcl/v2"
 )
@@ -12,7 +12,7 @@ type Include struct {
 }
 
 func (i *Include) PartialDecode(basedir string) error {
-	src, err := utils.JoinCtyPath(basedir, i.Src)
+	src, err := hclang.JoinCtyPath(basedir, i.Src)
 	if err != nil {
 		return err
 	}

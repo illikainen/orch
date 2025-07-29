@@ -20,7 +20,6 @@ import (
 	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/metadata"
 	"github.com/illikainen/orch/src/rpc/controller"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
@@ -49,7 +48,7 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 		return diags
 	}
 
-	err = utils.FromCtyValue(value, h)
+	err = hclang.FromCtyValue(value, h)
 	if err != nil {
 		return err
 	}

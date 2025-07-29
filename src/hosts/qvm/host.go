@@ -48,7 +48,7 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 		return diags
 	}
 
-	err = utils.FromCtyValue(value, h)
+	err = hclang.FromCtyValue(value, h)
 	if err != nil {
 		return err
 	}

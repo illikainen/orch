@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/illikainen/orch/src/hclang"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
@@ -46,7 +45,7 @@ func (c *Config) Decode(ctxfn func() (*hcl.EvalContext, error)) error {
 			return diags
 		}
 
-		err = utils.FromCtyValue(value, c)
+		err = hclang.FromCtyValue(value, c)
 		if err != nil {
 			return err
 		}

@@ -5,7 +5,6 @@ import (
 	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/qubes"
 	"github.com/illikainen/orch/src/tasks/decode"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/illikainen/go-utils/src/fn"
@@ -53,7 +52,7 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 	}
 	value = cty.ObjectVal(values)
 
-	err = utils.FromCtyValue(value, d)
+	err = hclang.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}

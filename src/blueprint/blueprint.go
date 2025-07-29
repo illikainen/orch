@@ -12,12 +12,12 @@ import (
 	"github.com/illikainen/orch/src/bindings"
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/fact"
+	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/hosts"
 	"github.com/illikainen/orch/src/includes"
 	"github.com/illikainen/orch/src/metadata"
 	"github.com/illikainen/orch/src/rpc"
 	"github.com/illikainen/orch/src/tasks/outputs"
-	"github.com/illikainen/orch/src/utils"
 	"github.com/illikainen/orch/src/variables"
 
 	"github.com/hashicorp/hcl/v2"
@@ -363,22 +363,22 @@ func (b *Blueprint) evalContext() (*hcl.EvalContext, error) {
 		return nil, err
 	}
 
-	ctx.Variables, err = utils.MergeCtyValues(ctx.Variables, facts)
+	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, facts)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.Variables, err = utils.MergeCtyValues(ctx.Variables, b.Variables.Variables())
+	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Variables.Variables())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.Variables, err = utils.MergeCtyValues(ctx.Variables, b.Hosts.Variables())
+	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Hosts.Variables())
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.Variables, err = utils.MergeCtyValues(ctx.Variables, b.Bindings.Variables())
+	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, b.Bindings.Variables())
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +387,7 @@ func (b *Blueprint) evalContext() (*hcl.EvalContext, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.Variables, err = utils.MergeCtyValues(ctx.Variables, output)
+	ctx.Variables, err = hclang.MergeCtyValues(ctx.Variables, output)
 	if err != nil {
 		return nil, err
 	}

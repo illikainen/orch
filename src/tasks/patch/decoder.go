@@ -7,7 +7,6 @@ import (
 	"github.com/illikainen/orch/src/configs"
 	"github.com/illikainen/orch/src/hclang"
 	"github.com/illikainen/orch/src/tasks/decode"
-	"github.com/illikainen/orch/src/utils"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -45,14 +44,14 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hcl.EvalContext, config *configs.Co
 		return err
 	}
 
-	err = utils.FromCtyValue(value, d)
+	err = hclang.FromCtyValue(value, d)
 	if err != nil {
 		return err
 	}
 
 	patch := d.Patch
 	if !filepath.IsAbs(patch) {
-		patch, err = utils.JoinCtyPath(body.(*hclsyntax.Body), patch)
+		patch, err = hclang.JoinCtyPath(body.(*hclsyntax.Body), patch)
 		if err != nil {
 			return err
 		}

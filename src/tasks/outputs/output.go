@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/illikainen/orch/src/utils"
+	"github.com/illikainen/orch/src/hclang"
 )
 
 const (
@@ -27,7 +27,7 @@ type Output struct {
 }
 
 func (o *Output) Value() (cty.Value, error) {
-	return utils.ToCtyValue(o)
+	return hclang.ToCtyValue(o)
 }
 
 func (o *Output) UnmarshalJSON(data []byte) error {

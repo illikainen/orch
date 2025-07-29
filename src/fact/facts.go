@@ -1,7 +1,7 @@
 package fact
 
 import (
-	"github.com/illikainen/orch/src/utils"
+	"github.com/illikainen/orch/src/hclang"
 
 	"github.com/zclconf/go-cty/cty"
 )
@@ -13,7 +13,7 @@ type Facts struct {
 }
 
 func (f *Facts) Value() (cty.Value, error) {
-	return utils.ToCtyValue(f)
+	return hclang.ToCtyValue(f)
 }
 
 func (f *Facts) Variables() (map[string]cty.Value, error) {
