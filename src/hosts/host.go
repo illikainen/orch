@@ -17,7 +17,6 @@ type Connector interface {
 	Name() string
 	Decode(string, hcl.Body, *hcl.EvalContext) error
 	Validate() error
-	Condition() bool
 	Value() cty.Value
 	Dial(bool) error
 	UploadBinary() error
@@ -81,10 +80,6 @@ func (h *Host) Validate() error {
 		return errors.Errorf("`this' is a reserved name")
 	}
 	return nil
-}
-
-func (h *Host) Condition() bool {
-	return h.Connector.Condition()
 }
 
 func (h *Host) Value() cty.Value {

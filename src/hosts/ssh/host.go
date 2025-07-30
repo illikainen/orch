@@ -27,11 +27,10 @@ import (
 )
 
 type Host struct {
-	Cond     *bool  `hcl:"condition,optional" default:"true"`
-	Hostname string `hcl:"hostname,optional"`
-	User     string `hcl:"user,optional"`
-	Password string `hcl:"password,optional"`
-	Become   string `hcl:"become,optional"`
+	Hostname string `json:"hostname"  hcl:"hostname,optional"`
+	User     string `json:"user"      hcl:"user,optional"`
+	Password string `json:"password"  hcl:"password,optional"`
+	Become   string `json:"become"    hcl:"become,optional"`
 	name     string
 	conn     *sshx.Client
 	bin      string
@@ -68,10 +67,6 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 
 func (h *Host) Validate() error {
 	return nil
-}
-
-func (h *Host) Condition() bool {
-	return h.Cond != nil && *h.Cond
 }
 
 func (h *Host) Value() cty.Value {

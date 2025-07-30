@@ -26,9 +26,8 @@ import (
 )
 
 type Host struct {
-	Cond     *bool  `hcl:"condition,optional" default:"true"`
-	Hostname string `hcl:"hostname,optional"`
-	Become   string `hcl:"become,optional"`
+	Hostname string `json:"hostname"  hcl:"hostname,optional"`
+	Become   string `json:"become"    hcl:"become,optional"`
 	name     string
 	bin      string
 	sys      *sysinfo
@@ -65,10 +64,6 @@ func (h *Host) Decode(name string, body hcl.Body, ctx *hcl.EvalContext) error {
 
 func (h *Host) Validate() error {
 	return nil
-}
-
-func (h *Host) Condition() bool {
-	return h.Cond != nil && *h.Cond
 }
 
 func (h *Host) Value() cty.Value {
