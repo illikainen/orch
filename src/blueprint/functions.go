@@ -40,7 +40,11 @@ func getattr() function.Function {
 			},
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {
-			return args[2].Type(), nil
+			typ := args[2].Type()
+			if typ.Equals(cty.Bool) || typ.Equals(cty.Number) || typ.Equals(cty.String) {
+				return args[2].Type(), nil
+			}
+			return cty.DynamicPseudoType, nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
 			values := args[0].AsValueMap()
@@ -48,12 +52,7 @@ func getattr() function.Function {
 			fallback := args[2]
 
 			if value, ok := values[key]; ok {
-				valType := value.Type()
-				if valType.Equals(retType) {
-					return value, nil
-				}
-
-				if valType.Equals(cty.String) {
+				if value.Type().Equals(cty.String) {
 					str := value.AsString()
 
 					if retType.Equals(cty.Bool) {
@@ -73,7 +72,7 @@ func getattr() function.Function {
 					}
 				}
 
-				return cty.NilVal, errors.Errorf("getattr: unsupported type: %s", valType)
+				return value, nil
 			}
 
 			return fallback, nil
