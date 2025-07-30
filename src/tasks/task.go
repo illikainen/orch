@@ -22,6 +22,7 @@ import (
 	_ "github.com/illikainen/orch/src/tasks/symlink"               // decoder
 	_ "github.com/illikainen/orch/src/tasks/systemd"               // decoder
 	_ "github.com/illikainen/orch/src/tasks/systemd_daemon_reload" // decoder
+	_ "github.com/illikainen/orch/src/tasks/user"                  // decoder
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
