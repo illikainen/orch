@@ -69,6 +69,31 @@ func Stop(name string, dryRun bool) ([]string, error) {
 	return nil, nil
 }
 
+func Reload(name string, dryRun bool) ([]string, error) {
+	p, err := process.Exec(&process.ExecOptions{
+		Command:         []string{"systemctl", "is-active", "--quiet", "--", name},
+		IgnoreExitError: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if p.ExitCode == 0 {
+		if !dryRun {
+			_, err := process.Exec(&process.ExecOptions{
+				Command: []string{"systemctl", "reload", "--", name},
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return []string{fmt.Sprintf("%s: reloaded", name)}, nil
+	}
+
+	return nil, nil
+}
+
 func Restart(name string, dryRun bool) ([]string, error) {
 	p, err := process.Exec(&process.ExecOptions{
 		Command:         []string{"systemctl", "is-active", "--quiet", "--", name},

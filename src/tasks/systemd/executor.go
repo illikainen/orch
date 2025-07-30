@@ -33,6 +33,7 @@ func (e *Executor) Execute() (any, error) {
 	actions := map[string]func(string, bool) ([]string, error){
 		"start":   Start,
 		"stop":    Stop,
+		"reload":  Reload,
 		"restart": Restart,
 		"enable":  Enable,
 		"disable": Disable,
