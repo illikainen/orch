@@ -132,12 +132,10 @@ func buildIngressRules(rules []Ingress, ctx *Context) error {
 
 		if rule.SrcIface != "" {
 			ingress = append(ingress, "iifname", rule.SrcIface)
-			egress = append(egress, "oifname", rule.SrcIface)
 		}
 
 		if rule.DstIface != "" {
-			ingress = append(ingress, "oifname", rule.DstIface)
-			egress = append(egress, "iifname", rule.DstIface)
+			egress = append(egress, "oifname", rule.DstIface)
 		}
 
 		if rule.SrcAddr != "" {
@@ -170,18 +168,18 @@ func buildIngressRules(rules []Ingress, ctx *Context) error {
 			}
 		}
 
-		if rule.Proto == "icmp" {
-			ingress = append(ingress, rule.Proto)
-			egress = append(egress, rule.Proto)
+		ingress = append(ingress, "meta", "l4proto", rule.Proto)
+		egress = append(egress, "meta", "l4proto", rule.Proto)
 
+		if rule.Proto == "icmp" {
 			if rule.ICMPType != "" {
-				ingress = append(ingress, "type", rule.ICMPType)
+				ingress = append(ingress, rule.Proto, "type", rule.ICMPType)
 
 				typ, err := oppositeICMPType(rule.ICMPType)
 				if err != nil {
 					return err
 				}
-				egress = append(egress, "type", typ)
+				egress = append(egress, rule.Proto, "type", typ)
 			}
 		} else {
 			if rule.SrcPort != "" {
@@ -189,11 +187,9 @@ func buildIngressRules(rules []Ingress, ctx *Context) error {
 				egress = append(egress, rule.Proto, "dport", string(rule.SrcPort))
 			}
 
-			ingress = append(ingress, rule.Proto)
-			egress = append(egress, rule.Proto)
 			if rule.DstPort != "" {
-				ingress = append(ingress, "dport", string(rule.DstPort))
-				egress = append(egress, "sport", string(rule.DstPort))
+				ingress = append(ingress, rule.Proto, "dport", string(rule.DstPort))
+				egress = append(egress, rule.Proto, "sport", string(rule.DstPort))
 			}
 		}
 
@@ -213,13 +209,11 @@ func buildEgressRules(rules []Egress, ctx *Context) error {
 		egress := []string{}
 
 		if rule.SrcIface != "" {
-			ingress = append(ingress, "iifname", rule.SrcIface)
 			egress = append(egress, "oifname", rule.SrcIface)
 		}
 
 		if rule.DstIface != "" {
-			ingress = append(ingress, "oifname", rule.DstIface)
-			egress = append(egress, "iifname", rule.DstIface)
+			ingress = append(ingress, "iifname", rule.DstIface)
 		}
 
 		if rule.SrcAddr != "" {
@@ -352,19 +346,19 @@ func buildNATRules(rules []NAT, ctx *Context) error {
 			}
 		}
 
-		if rule.Proto == "icmp" {
-			postrouting = append(postrouting, rule.Proto)
-			out = append(out, rule.Proto)
-			in = append(in, rule.Proto)
+		postrouting = append(postrouting, "meta", "l4proto", rule.Proto)
+		out = append(out, "meta", "l4proto", rule.Proto)
+		in = append(in, "meta", "l4proto", rule.Proto)
 
+		if rule.Proto == "icmp" {
 			if rule.ICMPType != "" {
-				postrouting = append(postrouting, "type", rule.ICMPType)
-				out = append(out, "type", rule.ICMPType)
+				postrouting = append(postrouting, rule.Proto, "type", rule.ICMPType)
+				out = append(out, rule.Proto, "type", rule.ICMPType)
 				typ, err := oppositeICMPType(rule.ICMPType)
 				if err != nil {
 					return err
 				}
-				in = append(in, "type", typ)
+				in = append(in, rule.Proto, "type", typ)
 			}
 		} else {
 			if rule.SrcPort != "" {
@@ -373,13 +367,10 @@ func buildNATRules(rules []NAT, ctx *Context) error {
 				in = append(in, rule.Proto, "dport", string(rule.SrcPort))
 			}
 
-			postrouting = append(postrouting, rule.Proto)
-			out = append(out, rule.Proto)
-			in = append(in, rule.Proto)
 			if rule.DstPort != "" {
-				postrouting = append(postrouting, "dport", string(rule.DstPort))
-				out = append(out, rule.Proto, "dport", string(rule.DstPort))
-				in = append(in, rule.Proto, "sport", string(rule.DstPort))
+				postrouting = append(postrouting, rule.Proto, "dport", string(rule.DstPort))
+				out = append(out, rule.Proto, rule.Proto, "dport", string(rule.DstPort))
+				in = append(in, rule.Proto, rule.Proto, "sport", string(rule.DstPort))
 			}
 		}
 
