@@ -35,7 +35,15 @@ func (d *Decoder) PartialDecode(body hcl.Body) error {
 }
 
 func (d *Decoder) Decode(body hcl.Body, ctx *hclang.EvalContext, config *configs.Config) error {
-	value, err := hclang.Decode(body, &hclang.DecodeOptions{
+	var task Task
+	spec, err := hclang.GenerateObjectSpec(task)
+	if err != nil {
+		return err
+	}
+
+	value, err := hclang.Decode(&hclang.DecodeOptions{
+		Body:    body,
+		Spec:    spec,
 		Context: ctx,
 		ForEach: []string{".", "egress"},
 	})

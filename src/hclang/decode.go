@@ -4,6 +4,7 @@ import (
 	"path"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/illikainen/go-utils/src/assoc"
 	"github.com/illikainen/go-utils/src/seq"
@@ -12,25 +13,28 @@ import (
 )
 
 type DecodeOptions struct {
+	Body    hcl.Body
+	Spec    *hcldec.ObjectSpec
 	Context *EvalContext
-	context *hcl.EvalContext
 	ForEach []string
 }
 
-func Decode(body hcl.Body, opts *DecodeOptions) (cty.Value, error) {
+func Decode(opts *DecodeOptions) (cty.Value, error) {
 	if opts == nil {
 		opts = &DecodeOptions{}
 	}
 
-	if opts.Context != nil {
-		ctx, err := opts.Context.Build()
-		if err != nil {
-			return cty.NilVal, err
-		}
-		opts.context = ctx
+	ctx, err := opts.Context.Build()
+	if err != nil {
+		return cty.NilVal, err
 	}
 
-	values, err := decode(body, opts, ".")
+	body, ok := opts.Body.(*hclsyntax.Body)
+	if !ok {
+		return cty.NilVal, errors.Errorf("bug")
+	}
+
+	values, err := decode(body, opts.Spec, ctx, ".", opts)
 	if err != nil {
 		return cty.NilVal, err
 	}
@@ -44,15 +48,11 @@ func Decode(body hcl.Body, opts *DecodeOptions) (cty.Value, error) {
 	return cty.TupleVal(values), nil
 }
 
-func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, error) {
-	b, ok := body.(*hclsyntax.Body)
-	if !ok {
-		return nil, errors.Errorf("bug")
-	}
-
+func decode(body *hclsyntax.Body, spec *hcldec.ObjectSpec, ctx *hcl.EvalContext,
+	location string, opts *DecodeOptions) ([]cty.Value, error) {
 	var result []cty.Value
-	if seq.Contains(opts.ForEach, location) && assoc.HasKey(b.Attributes, "for_each") {
-		forEach, diags := b.Attributes["for_each"].Expr.Value(opts.context)
+	if seq.Contains(opts.ForEach, location) && assoc.HasKey(body.Attributes, "for_each") {
+		forEach, diags := body.Attributes["for_each"].Expr.Value(ctx)
 		if diags != nil {
 			return nil, diags
 		}
@@ -64,65 +64,87 @@ func decode(body hcl.Body, opts *DecodeOptions, location string) ([]cty.Value, e
 		it := forEach.ElementIterator()
 		for it.Next() {
 			_, each := it.Element()
-			ctx := opts.context.NewChild()
-			if ctx.Variables == nil {
-				ctx.Variables = map[string]cty.Value{}
+			eachCtx := ctx.NewChild()
+			if eachCtx.Variables == nil {
+				eachCtx.Variables = map[string]cty.Value{}
 			}
-			ctx.Variables["each"] = each
+			eachCtx.Variables["each"] = each
 
-			values := map[string]cty.Value{}
-			for name, attr := range b.Attributes {
-				if name != "for_each" {
-					value, diags := attr.Expr.Value(ctx)
-					if diags != nil {
-						return nil, diags
-					}
-					values[name] = value
-				}
+			value, err := decodeBlock(body, spec, eachCtx, location, []string{"for_each"}, opts)
+			if err != nil {
+				return nil, err
 			}
-
-			blocks := map[string][]cty.Value{}
-			for _, block := range b.Blocks {
-				o := *opts
-				o.context = ctx
-				blockValues, diags := decode(block.Body, &o, path.Join(location, block.Type))
-				if diags != nil {
-					return nil, diags
-				}
-				blocks[block.Type] = append(blocks[block.Type], blockValues...)
-			}
-
-			for name, block := range blocks {
-				values[name] = cty.TupleVal(block)
-			}
-
-			result = append(result, cty.ObjectVal(values))
+			result = append(result, value)
 		}
 	} else {
-		values := map[string]cty.Value{}
-		for name, attr := range b.Attributes {
-			value, diags := attr.Expr.Value(opts.context)
-			if diags != nil {
-				return nil, diags
-			}
-			values[name] = value
+		value, err := decodeBlock(body, spec, ctx, location, nil, opts)
+		if err != nil {
+			return nil, err
 		}
-
-		blocks := map[string][]cty.Value{}
-		for _, block := range b.Blocks {
-			blockValues, diags := decode(block.Body, opts, path.Join(location, block.Type))
-			if diags != nil {
-				return nil, diags
-			}
-			blocks[block.Type] = append(blocks[block.Type], blockValues...)
-		}
-
-		for name, block := range blocks {
-			values[name] = cty.TupleVal(block)
-		}
-
-		result = append(result, cty.ObjectVal(values))
+		result = append(result, value)
 	}
 
 	return result, nil
+}
+
+func decodeBlock(body *hclsyntax.Body, spec *hcldec.ObjectSpec, ctx *hcl.EvalContext,
+	location string, exclude []string, opts *DecodeOptions) (cty.Value, error) {
+	values := map[string]cty.Value{}
+	for name, attr := range body.Attributes {
+		if !seq.Contains(exclude, name) {
+			value, diags := attr.Expr.Value(ctx)
+			if diags != nil {
+				return cty.NilVal, errors.WithStack(diags)
+			}
+			values[name] = value
+		}
+	}
+
+	blocks := map[string][]cty.Value{}
+	for _, block := range body.Blocks {
+		s, ok := (*spec)[block.Type]
+		if !ok {
+			return cty.NilVal, errors.Errorf("%s: unknown field", block.Type)
+		}
+
+		var blockSpec *hcldec.ObjectSpec
+		switch s := s.(type) {
+		case *hcldec.BlockSpec:
+			blockSpec, ok = s.Nested.(*hcldec.ObjectSpec)
+			if !ok {
+				return cty.NilVal, errors.Errorf("%s: invalid type", block.Type)
+			}
+		case *hcldec.BlockListSpec:
+			blockSpec, ok = s.Nested.(*hcldec.ObjectSpec)
+			if !ok {
+				return cty.NilVal, errors.Errorf("%s: invalid type", block.Type)
+			}
+		default:
+			return cty.NilVal, errors.Errorf("%s: invalid type", block.Type)
+		}
+
+		blockValues, diags := decode(block.Body, blockSpec, ctx, path.Join(location, block.Type), opts)
+		if diags != nil {
+			return cty.NilVal, errors.WithStack(diags)
+		}
+		blocks[block.Type] = append(blocks[block.Type], blockValues...)
+	}
+
+	for name, block := range blocks {
+		s, ok := (*spec)[name]
+		if !ok {
+			return cty.NilVal, errors.Errorf("%s: unknown field", name)
+		}
+
+		if _, ok := s.(*hcldec.BlockSpec); ok {
+			if len(block) != 1 {
+				return cty.NilVal, errors.Errorf("bug")
+			}
+			values[name] = block[0]
+		} else {
+			values[name] = cty.TupleVal(block)
+		}
+	}
+
+	return cty.ObjectVal(values), nil
 }
