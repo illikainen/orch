@@ -99,6 +99,12 @@ func GenerateObjectSpec(v any) (*hcldec.ObjectSpec, error) {
 				Nested:   inner,
 				MinItems: fn.Ternary(tags.Required, 1, 0),
 			}
+		} else if kind == reflect.Map {
+			spec[tags.Name] = &hcldec.AttrSpec{
+				Name:     tags.Name,
+				Type:     fn.Ternary(tags.Type != cty.NilType, tags.Type, cty.DynamicPseudoType),
+				Required: tags.Required,
+			}
 		} else {
 			if kind == reflect.Interface {
 				if field.Type.Implements(reflect.TypeOf((*hcl.Body)(nil)).Elem()) {

@@ -57,7 +57,11 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hclang.EvalContext, config *configs
 	}
 
 	if d.Content != "" {
-		d.Content = base64.StdEncoding.EncodeToString([]byte(d.Content))
+		content, err := templatify([]byte(d.Content), d.Context)
+		if err != nil {
+			return err
+		}
+		d.Content = base64.StdEncoding.EncodeToString(content)
 	} else {
 		src, err := hclang.JoinCtyPath(body.(*hclsyntax.Body), d.Src)
 		if err != nil {
@@ -68,7 +72,12 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hclang.EvalContext, config *configs
 		if err != nil {
 			return err
 		}
-		d.Content = base64.StdEncoding.EncodeToString(data)
+
+		content, err := templatify(data, d.Context)
+		if err != nil {
+			return err
+		}
+		d.Content = base64.StdEncoding.EncodeToString(content)
 	}
 
 	if int(d.FileMode) == 0 {

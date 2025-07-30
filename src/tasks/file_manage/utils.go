@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/illikainen/orch/src/utils"
 
@@ -112,4 +113,23 @@ func WriteFile(name string, data []byte, mode os.FileMode, dryRun bool) ([]strin
 	}
 
 	return nil, nil
+}
+
+func templatify(content []byte, context any) ([]byte, error) {
+	if context == nil {
+		return content, nil
+	}
+
+	tpl, err := template.New("file_manage").Parse(string(content))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	var out bytes.Buffer
+	err = tpl.Execute(&out, context)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return out.Bytes(), nil
 }

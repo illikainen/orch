@@ -55,7 +55,7 @@ func generateBodySchema(v any, opts *DecodeOptions, location string) (*BodySchem
 		switch kind {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-			reflect.Bool, reflect.String:
+			reflect.Bool, reflect.String, reflect.Map:
 			log.Tracef("%s: add '%s' as AttributeSchema", typ.Name(), tags.Name)
 			bs.Schema.Attributes = append(bs.Schema.Attributes, hcl.AttributeSchema{
 				Name:     tags.Name,

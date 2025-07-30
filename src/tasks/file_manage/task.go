@@ -14,6 +14,7 @@ type Task struct {
 	Src      string          `json:"src"       hcl:"src,optional"       validate:"either:Content"`
 	Dst      string          `json:"dst"       hcl:"dst"`
 	Content  string          `json:"content"   hcl:"content,optional"`
+	Context  map[string]any  `json:"context"   hcl:"context,optional"`
 	FileMode os.FileMode     `json:"file_mode" hcl:"file_mode,optional"`
 	DirMode  os.FileMode     `json:"dir_mode"  hcl:"dir_mode,optional"`
 	Config   *configs.Config `json:"config"    hcl:"-"`
