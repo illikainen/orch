@@ -20,8 +20,8 @@ type Policy struct {
 type Packet struct { // revive:disable:line-length-limit
 	Action   string          `json:"action"    hcl:"action"             validate:"in:[\"accept\", \"drop\", \"reject\"]"`
 	Proto    string          `json:"proto"     hcl:"proto"              validate:"in:[\"tcp\", \"udp\", \"icmp\"]"`
-	SrcIface string          `json:"src_iface" hcl:"src_iface,optional" validate:"rx:^[a-zA-Z0-9-]+$"`
-	DstIface string          `json:"dst_iface" hcl:"dst_iface,optional" validate:"rx:^[a-zA-Z0-9-]+$"`
+	SrcIface string          `json:"src_iface" hcl:"src_iface,optional" validate:"rx:^[a-zA-Z0-9*-]+$"`
+	DstIface string          `json:"dst_iface" hcl:"dst_iface,optional" validate:"rx:^[a-zA-Z0-9*-]+$"`
 	SrcPort  codec.Stringify `json:"src_port"  hcl:"src_port,optional"  validate:"port"`
 	SrcAddr  string          `json:"src_addr"  hcl:"src_addr,optional"  validate:"ip:autocidr"`
 	DstPort  codec.Stringify `json:"dst_port"  hcl:"dst_port,optional"  validate:"port"`
