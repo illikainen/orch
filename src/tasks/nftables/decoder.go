@@ -45,7 +45,7 @@ func (d *Decoder) Decode(body hcl.Body, ctx *hclang.EvalContext, config *configs
 		Body:    body,
 		Spec:    spec,
 		Context: ctx,
-		ForEach: []string{".", "egress"},
+		ForEach: []string{".", "ingress", "egress", "nat"},
 	})
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (d *Decoder) Dependencies(body hcl.Body) ([]string, error) {
 	var task Task
 	schema, err := hclang.GenerateBodySchema(task, &hclang.DecodeOptions{
 		Context: nil,
-		ForEach: []string{".", "egress"},
+		ForEach: []string{".", "ingress", "egress", "nat"},
 	})
 	if err != nil {
 		return nil, err
