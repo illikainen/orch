@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/illikainen/go-utils/src/structor"
 )
 
 type Config struct { // revive:disable:line-length-limit
@@ -44,6 +45,11 @@ func (c *Config) Decode(ctx *hclang.EvalContext) error {
 		}
 
 		err = hclang.FromCtyValue(value, c)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := structor.Apply(c, nil)
 		if err != nil {
 			return err
 		}
